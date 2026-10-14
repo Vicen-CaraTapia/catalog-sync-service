@@ -6,6 +6,21 @@ Backend Spring Boot que servirá como base del servicio de catálogo y sincroniz
 
 - Java 25
 - Maven
+- PostgreSQL
+
+## Configuración de base de datos
+
+La aplicación requiere una base PostgreSQL de Catálogo configurada mediante variables de entorno:
+
+```bash
+export CATALOG_DB_URL='jdbc:postgresql://localhost:5432/catalog_sync'
+export CATALOG_DB_USERNAME='catalog_sync_app'
+read -r -s -p 'CATALOG_DB_PASSWORD: ' CATALOG_DB_PASSWORD
+echo
+export CATALOG_DB_PASSWORD
+```
+
+No guardes credenciales reales en el repositorio.
 
 ## Ejecución local
 
@@ -39,4 +54,10 @@ La respuesta debe incluir:
 
 ```bash
 mvn clean verify
+```
+
+Para verificar la conexión real a PostgreSQL:
+
+```bash
+mvn -Ppostgres-integration clean verify
 ```
