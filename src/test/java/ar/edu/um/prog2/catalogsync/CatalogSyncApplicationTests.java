@@ -6,7 +6,10 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+		useMainMethod = SpringBootTest.UseMainMethod.ALWAYS
+)
 @AutoConfigureRestTestClient
 class CatalogSyncApplicationTests {
 
