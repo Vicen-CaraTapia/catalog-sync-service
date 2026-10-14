@@ -21,6 +21,18 @@ http://localhost:8081
 
 Podés cambiar el puerto mediante la variable de entorno `SERVER_PORT`.
 
+## Configuración externa
+
+`.env.example` es una plantilla de referencia; Spring Boot no la carga automáticamente.
+
+Configurá los valores reales desde la shell, IDE, CI/CD, Docker u otro entorno externo. Por ahora:
+
+- `SERVER_PORT`: opcional, por defecto `8081`.
+
+No versionar secretos ni archivos locales como `.env` o `application-local.*`.
+
+Las futuras configuraciones de infraestructura se externalizarán en sus Issues correspondientes.
+
 ## Health check
 
 Con el servicio iniciado:
