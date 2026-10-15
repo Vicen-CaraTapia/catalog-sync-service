@@ -40,13 +40,27 @@ Podés cambiar el puerto mediante la variable de entorno `SERVER_PORT`.
 
 `.env.example` es una plantilla de referencia; Spring Boot no la carga automáticamente.
 
-Configurá los valores reales desde la shell, IDE, CI/CD, Docker u otro entorno externo. Por ahora:
+Configurá los valores reales desde la shell, IDE, CI/CD, Docker u otro entorno externo.
 
-- `SERVER_PORT`: opcional, por defecto `8081`.
+| Variable | Descripción |
+| --- | --- |
+| `SERVER_PORT` | Puerto HTTP local del servicio. Es opcional; por defecto usa `8081`. |
+| `CATEDRA_GROUP_ID` | Identificador técnico del grupo asignado por la cátedra. |
+| `CATEDRA_TECHNICAL_JWT` | JWT de la cuenta técnica para autenticarse ante la cátedra. Es secreto. |
+| `CATEDRA_REST_BASE_URL` | URL base de la API REST de la cátedra. |
+| `CATEDRA_REDIS_HOST` | Host del Redis provisto por la cátedra. |
+| `CATEDRA_REDIS_PORT` | Puerto del Redis provisto por la cátedra. |
+| `CATEDRA_REDIS_USERNAME` | Usuario técnico de Redis. |
+| `CATEDRA_REDIS_PASSWORD` | Contraseña técnica de Redis. Es secreto. |
+| `CATEDRA_REDIS_READ_NAMESPACE` | Namespace de Redis desde el que Catálogo leerá datos de sincronización. |
+| `CATEDRA_REDIS_WRITE_NAMESPACE` | Namespace privado de escritura asignado al grupo. |
+| `CATEDRA_KAFKA_BOOTSTRAP_SERVERS` | Direcciones iniciales de los brokers Kafka de la cátedra. |
+| `CATEDRA_KAFKA_CONSUMER_GROUP_ID` | Identificador del grupo consumidor de Catálogo. |
+| `CATEDRA_KAFKA_CATALOG_TOPIC` | Topic de Kafka con notificaciones de actualización del catálogo. |
+
+Esta Issue solo configura y valida estas propiedades; todavía no realiza conexiones REST, Redis ni Kafka.
 
 No versionar secretos ni archivos locales como `.env` o `application-local.*`.
-
-Las futuras configuraciones de infraestructura se externalizarán en sus Issues correspondientes.
 
 ## Health check
 
