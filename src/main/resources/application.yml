@@ -1,2 +1,11 @@
 server:
   port: ${SERVER_PORT:8081}
+
+spring:
+  datasource:
+    url: ${CATALOG_DB_URL}
+    username: ${CATALOG_DB_USERNAME}
+    password: ${CATALOG_DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: none
