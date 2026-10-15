@@ -1,0 +1,16 @@
+catedra:
+  group-id: test-catalog-sync
+  technical-jwt: test-only-technical-jwt
+  rest:
+    base-url: http://localhost:18080
+  redis:
+    host: localhost
+    port: 6379
+    username: test-user
+    password: test-only-password
+    read-namespace: "catedra:sync:*"
+    write-namespace: "alumnos:test-catalog-sync:*"
+  kafka:
+    bootstrap-servers: localhost:19092
+    consumer-group-id: test-catalog-sync-consumer
+    catalog-topic: catedra.catalog.test-catalog-sync

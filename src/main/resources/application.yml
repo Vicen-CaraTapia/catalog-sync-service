@@ -1,6 +1,23 @@
 server:
   port: ${SERVER_PORT:8081}
 
+catedra:
+  group-id: ${CATEDRA_GROUP_ID:}
+  technical-jwt: ${CATEDRA_TECHNICAL_JWT:}
+  rest:
+    base-url: ${CATEDRA_REST_BASE_URL:}
+  redis:
+    host: ${CATEDRA_REDIS_HOST:}
+    port: ${CATEDRA_REDIS_PORT:}
+    username: ${CATEDRA_REDIS_USERNAME:}
+    password: ${CATEDRA_REDIS_PASSWORD:}
+    read-namespace: ${CATEDRA_REDIS_READ_NAMESPACE:}
+    write-namespace: ${CATEDRA_REDIS_WRITE_NAMESPACE:}
+  kafka:
+    bootstrap-servers: ${CATEDRA_KAFKA_BOOTSTRAP_SERVERS:}
+    consumer-group-id: ${CATEDRA_KAFKA_CONSUMER_GROUP_ID:}
+    catalog-topic: ${CATEDRA_KAFKA_CATALOG_TOPIC:}
+
 spring:
   datasource:
     url: ${CATALOG_DB_URL}
