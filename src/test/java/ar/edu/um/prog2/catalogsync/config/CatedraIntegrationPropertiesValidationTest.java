@@ -2,6 +2,8 @@ package ar.edu.um.prog2.catalogsync.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBindException;
@@ -23,6 +25,8 @@ class CatedraIntegrationPropertiesValidationTest {
 				.withPropertyValues(
 						"catedra.group-id=test-catalog-sync",
 						"catedra.rest.base-url=http://localhost:18080",
+						"catedra.rest.connect-timeout=2s",
+						"catedra.rest.read-timeout=5s",
 						"catedra.redis.host=localhost",
 						"catedra.redis.port=6379",
 						"catedra.redis.username=test-user",
@@ -50,7 +54,11 @@ class CatedraIntegrationPropertiesValidationTest {
 		CatedraIntegrationProperties properties = new CatedraIntegrationProperties(
 				"test-catalog-sync",
 				"test-technical-jwt",
-				new CatedraIntegrationProperties.RestProperties("http://localhost:18080"),
+				new CatedraIntegrationProperties.RestProperties(
+						"http://localhost:18080",
+						Duration.ofSeconds(2),
+						Duration.ofSeconds(5)
+				),
 				new CatedraIntegrationProperties.RedisProperties(
 						"localhost",
 						6379,
