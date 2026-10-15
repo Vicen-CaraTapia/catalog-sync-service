@@ -45,6 +45,32 @@ class CatedraIntegrationPropertiesValidationTest {
 				});
 	}
 
+	@Test
+	void toStringRedactsTechnicalJwtAndRedisPassword() {
+		CatedraIntegrationProperties properties = new CatedraIntegrationProperties(
+				"test-catalog-sync",
+				"test-technical-jwt",
+				new CatedraIntegrationProperties.RestProperties("http://localhost:18080"),
+				new CatedraIntegrationProperties.RedisProperties(
+						"localhost",
+						6379,
+						"test-user",
+						"test-redis-password",
+						"catedra:sync:*",
+						"alumnos:test-catalog-sync:*"
+				),
+				new CatedraIntegrationProperties.KafkaProperties(
+						"localhost:19092",
+						"test-catalog-sync-consumer",
+						"catedra.catalog.test-catalog-sync"
+				)
+		);
+
+		assertThat(properties.toString())
+				.contains("technicalJwt=<redacted>", "password=<redacted>")
+				.doesNotContain("test-technical-jwt", "test-redis-password");
+	}
+
 	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties(CatedraIntegrationProperties.class)
 	static class CatedraIntegrationPropertiesConfiguration {
