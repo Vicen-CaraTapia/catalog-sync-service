@@ -1,9 +1,12 @@
 package ar.edu.um.prog2.catalogsync.config;
 
+import java.time.Duration;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -29,7 +32,9 @@ public record CatedraIntegrationProperties(
 	}
 
 	public record RestProperties(
-			@NotBlank String baseUrl
+			@NotBlank String baseUrl,
+			@NotNull @DurationMin(seconds = 0, inclusive = false) Duration connectTimeout,
+			@NotNull @DurationMin(seconds = 0, inclusive = false) Duration readTimeout
 	) {
 	}
 
