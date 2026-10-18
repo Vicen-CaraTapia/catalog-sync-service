@@ -44,7 +44,9 @@ public record CatedraIntegrationProperties(
 			@NotBlank String username,
 			@NotBlank String password,
 			@NotBlank String readNamespace,
-			@NotBlank String writeNamespace
+			@NotBlank String writeNamespace,
+			@NotNull @DurationMin(seconds = 0, inclusive = false) Duration connectTimeout,
+			@NotNull @DurationMin(seconds = 0, inclusive = false) Duration commandTimeout
 	) {
 
 		@Override

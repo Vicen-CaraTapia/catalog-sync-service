@@ -12,7 +12,14 @@ catedra:
     password: test-only-password
     read-namespace: "catedra:sync:*"
     write-namespace: "alumnos:test-catalog-sync:*"
+    connect-timeout: 2s
+    command-timeout: 5s
   kafka:
     bootstrap-servers: localhost:19092
     consumer-group-id: test-catalog-sync-consumer
     catalog-topic: catedra.catalog.test-catalog-sync
+
+management:
+  health:
+    redis:
+      enabled: false

@@ -33,6 +33,8 @@ class CatedraIntegrationPropertiesValidationTest {
 						"catedra.redis.password=test-only-password",
 						"catedra.redis.read-namespace=catedra:sync:*",
 						"catedra.redis.write-namespace=alumnos:test-catalog-sync:*",
+						"catedra.redis.connect-timeout=2s",
+						"catedra.redis.command-timeout=5s",
 						"catedra.kafka.bootstrap-servers=localhost:19092",
 						"catedra.kafka.consumer-group-id=test-catalog-sync-consumer",
 						"catedra.kafka.catalog-topic=catedra.catalog.test-catalog-sync"
@@ -65,7 +67,9 @@ class CatedraIntegrationPropertiesValidationTest {
 						"test-user",
 						"test-redis-password",
 						"catedra:sync:*",
-						"alumnos:test-catalog-sync:*"
+						"alumnos:test-catalog-sync:*",
+						Duration.ofSeconds(2),
+						Duration.ofSeconds(5)
 				),
 				new CatedraIntegrationProperties.KafkaProperties(
 						"localhost:19092",

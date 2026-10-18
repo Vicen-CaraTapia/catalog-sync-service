@@ -219,7 +219,9 @@ class CatedraRestClientTest {
 						"test-user",
 						"test-password",
 						"catedra:sync:*",
-						"alumnos:test-catalog-sync:*"
+						"alumnos:test-catalog-sync:*",
+						Duration.ofSeconds(2),
+						Duration.ofSeconds(5)
 				),
 				new CatedraIntegrationProperties.KafkaProperties(
 						"localhost:19092",

@@ -1,0 +1,20 @@
+catedra:
+  group-id: redis-integration-test
+  technical-jwt: redis-integration-test-jwt
+  rest:
+    base-url: http://localhost:18080
+    connect-timeout: 2s
+    read-timeout: 5s
+  redis:
+    host: ${CATEDRA_REDIS_HOST:}
+    port: ${CATEDRA_REDIS_PORT:}
+    username: ${CATEDRA_REDIS_USERNAME:}
+    password: ${CATEDRA_REDIS_PASSWORD:}
+    read-namespace: "catedra:sync:*"
+    write-namespace: "alumnos:redis-integration-test:*"
+    connect-timeout: 2s
+    command-timeout: 5s
+  kafka:
+    bootstrap-servers: localhost:19092
+    consumer-group-id: redis-integration-test-consumer
+    catalog-topic: catedra.catalog.redis-integration-test
