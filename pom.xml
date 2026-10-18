@@ -76,6 +76,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -117,6 +121,18 @@
 						<artifactId>maven-failsafe-plugin</artifactId>
 						<executions>
 							<execution>
+								<id>default</id>
+								<phase>none</phase>
+							</execution>
+							<execution>
+								<id>postgres-it</id>
+								<configuration>
+									<includes>
+										<include>**/PostgreSqlConnectivityIT.java</include>
+										<include>**/FlywayMigrationIT.java</include>
+									</includes>
+									<summaryFile>${project.build.directory}/failsafe-reports/postgres-summary.xml</summaryFile>
+								</configuration>
 								<goals>
 									<goal>integration-test</goal>
 									<goal>verify</goal>
@@ -134,13 +150,49 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-failsafe-plugin</artifactId>
-						<configuration>
-							<includes>
-								<include>**/CatedraRedisConnectivityIT.java</include>
-							</includes>
-						</configuration>
 						<executions>
 							<execution>
+								<id>default</id>
+								<phase>none</phase>
+							</execution>
+							<execution>
+								<id>redis-it</id>
+								<configuration>
+									<includes>
+										<include>**/CatedraRedisConnectivityIT.java</include>
+									</includes>
+									<summaryFile>${project.build.directory}/failsafe-reports/redis-summary.xml</summaryFile>
+								</configuration>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>kafka-integration</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>default</id>
+								<phase>none</phase>
+							</execution>
+							<execution>
+								<id>kafka-it</id>
+								<configuration>
+									<includes>
+										<include>**/CatedraKafkaConnectivityIT.java</include>
+									</includes>
+									<summaryFile>${project.build.directory}/failsafe-reports/kafka-summary.xml</summaryFile>
+								</configuration>
 								<goals>
 									<goal>integration-test</goal>
 									<goal>verify</goal>
