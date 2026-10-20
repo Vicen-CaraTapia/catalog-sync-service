@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.exception;
 
 public class CatedraKafkaConnectivityException extends RuntimeException {
 

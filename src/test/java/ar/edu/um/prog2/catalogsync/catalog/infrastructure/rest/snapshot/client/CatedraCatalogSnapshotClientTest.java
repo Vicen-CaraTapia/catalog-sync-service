@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot;
+package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -13,7 +13,9 @@ import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
-import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.CatedraRestClientConfiguration;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.dto.CatalogSnapshotResponse;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.exception.InvalidCatalogSnapshotException;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.config.CatedraRestClientConfiguration;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraHttpException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;

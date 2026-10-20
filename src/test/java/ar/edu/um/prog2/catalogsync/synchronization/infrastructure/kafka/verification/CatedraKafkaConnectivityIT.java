@@ -1,7 +1,8 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.verification;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.verification.CatedraKafkaConnectivityVerifier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -1,6 +1,8 @@
-package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot;
+package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.client;
 
-import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.CatedraRestClient;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.dto.CatalogSnapshotResponse;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.exception.InvalidCatalogSnapshotException;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.client.CatedraRestClient;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraRestException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;

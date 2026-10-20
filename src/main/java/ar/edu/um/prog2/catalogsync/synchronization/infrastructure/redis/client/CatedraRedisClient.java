@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.client;
 
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.exception.CatedraRedisAccessException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.exception.CatedraRedisUnavailableException;

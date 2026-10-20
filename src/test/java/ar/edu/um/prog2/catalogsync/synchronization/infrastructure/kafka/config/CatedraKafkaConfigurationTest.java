@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;

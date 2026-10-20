@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.config.CatedraRestClientConfiguration;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraHttpException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraTimeoutException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraTransportException;

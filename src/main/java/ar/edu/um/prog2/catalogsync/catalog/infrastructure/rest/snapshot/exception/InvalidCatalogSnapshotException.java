@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot;
+package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.exception;
 
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraRestException;
 

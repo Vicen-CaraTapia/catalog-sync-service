@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot;
+package ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.dto;
 
 import java.time.DayOfWeek;
 import java.time.Instant;

@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.config;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
 import io.lettuce.core.ClientOptions;

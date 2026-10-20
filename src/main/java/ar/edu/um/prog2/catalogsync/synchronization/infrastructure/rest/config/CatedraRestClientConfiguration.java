@@ -1,8 +1,9 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.config;
 
 import java.net.http.HttpClient;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.client.CatedraRestClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -13,7 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 public class CatedraRestClientConfiguration {
 
 	@Bean
-	CatedraRestClient catedraRestClient(
+	public CatedraRestClient catedraRestClient(
 			CatedraIntegrationProperties properties,
 			ObjectMapper objectMapper
 	) {

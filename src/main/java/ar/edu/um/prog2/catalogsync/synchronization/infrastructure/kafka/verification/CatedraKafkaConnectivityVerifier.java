@@ -1,8 +1,9 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.verification;
 
 import java.time.Duration;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.exception.CatedraKafkaConnectivityException;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.AuthorizationException;

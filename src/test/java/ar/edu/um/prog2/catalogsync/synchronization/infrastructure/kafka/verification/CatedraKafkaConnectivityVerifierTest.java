@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.verification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
@@ -11,7 +11,8 @@ import java.time.Duration;
 import java.util.List;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
-import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.CatedraKafkaConnectivityException.Reason;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.exception.CatedraKafkaConnectivityException;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.exception.CatedraKafkaConnectivityException.Reason;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;

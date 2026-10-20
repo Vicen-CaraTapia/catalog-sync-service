@@ -1,10 +1,11 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest;
+package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.client;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.util.concurrent.TimeoutException;
 
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.dto.CatedraProblemDetails;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraHttpException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraRestException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraTimeoutException;
@@ -22,7 +23,7 @@ public final class CatedraRestClient {
 	private final RestClient restClient;
 	private final ObjectMapper objectMapper;
 
-	CatedraRestClient(RestClient restClient, ObjectMapper objectMapper) {
+	public CatedraRestClient(RestClient restClient, ObjectMapper objectMapper) {
 		this.restClient = restClient;
 		this.objectMapper = objectMapper;
 	}
