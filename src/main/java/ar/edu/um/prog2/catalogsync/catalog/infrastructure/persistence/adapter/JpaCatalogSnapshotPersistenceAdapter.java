@@ -1,6 +1,7 @@
 package ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.adapter;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.CatalogSnapshot;
+import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.CatalogInitializationStatePort;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.CatalogSnapshotPersistencePort;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.CatalogSyncStateEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.mapper.CatalogPersistenceMapper;
@@ -14,7 +15,8 @@ import java.util.function.Function;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class JpaCatalogSnapshotPersistenceAdapter implements CatalogSnapshotPersistencePort {
+public final class JpaCatalogSnapshotPersistenceAdapter
+        implements CatalogSnapshotPersistencePort, CatalogInitializationStatePort {
 
     private final ProfessionalCategoryJpaRepository professionalCategoryRepository;
     private final ProfessionalJpaRepository professionalRepository;
@@ -31,6 +33,11 @@ public final class JpaCatalogSnapshotPersistenceAdapter implements CatalogSnapsh
         this.professionalRepository = professionalRepository;
         this.weeklyScheduleRepository = weeklyScheduleRepository;
         this.catalogSyncStateRepository = catalogSyncStateRepository;
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return syncState().getAppliedVersion() != null;
     }
 
     @Override
@@ -77,11 +84,14 @@ public final class JpaCatalogSnapshotPersistenceAdapter implements CatalogSnapsh
         ));
         professionalCategoryRepository.flush();
 
-        CatalogSyncStateEntity syncState = catalogSyncStateRepository
+        syncState().updateAppliedVersion(snapshot.version());
+        catalogSyncStateRepository.flush();
+    }
+
+    private CatalogSyncStateEntity syncState() {
+        return catalogSyncStateRepository
                 .findById(CatalogSyncStateEntity.SINGLETON_ID)
                 .orElseThrow(() -> new IllegalStateException("catalog sync state is missing"));
-        syncState.updateAppliedVersion(snapshot.version());
-        catalogSyncStateRepository.flush();
     }
 
     private static <T> List<T> absentEntities(

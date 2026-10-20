@@ -19,6 +19,10 @@ catedra:
     consumer-group-id: test-catalog-sync-consumer
     catalog-topic: catedra.catalog.test-catalog-sync
 
+catalog:
+  initialization:
+    enabled: false
+
 management:
   health:
     redis:
