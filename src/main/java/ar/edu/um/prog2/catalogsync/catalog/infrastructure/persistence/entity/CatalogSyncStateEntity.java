@@ -33,4 +33,8 @@ public class CatalogSyncStateEntity {
     public Long getAppliedVersion() {
         return appliedVersion;
     }
+
+    public void updateAppliedVersion(long appliedVersion) {
+        this.appliedVersion = appliedVersion;
+    }
 }
