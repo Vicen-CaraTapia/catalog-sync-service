@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public final class ApplyCatalogSnapshotService implements ApplyCatalogSnapshotUseCase {
+public class ApplyCatalogSnapshotService implements ApplyCatalogSnapshotUseCase {
 
     private final CatalogSnapshotPersistencePort persistencePort;
 

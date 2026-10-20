@@ -131,6 +131,7 @@
 										<include>**/PostgreSqlConnectivityIT.java</include>
 										<include>**/FlywayMigrationIT.java</include>
 										<include>**/CatalogPersistenceIT.java</include>
+										<include>**/ApplyCatalogSnapshotIT.java</include>
 									</includes>
 									<summaryFile>${project.build.directory}/failsafe-reports/postgres-summary.xml</summaryFile>
 								</configuration>
