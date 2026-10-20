@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.ResourceAccessException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -36,7 +36,7 @@ public final class CatedraRestClient {
 		catch (CatedraRestException exception) {
 			throw exception;
 		}
-		catch (RestClientException exception) {
+		catch (ResourceAccessException exception) {
 			throw translateTransportException(exception);
 		}
 	}
@@ -88,7 +88,7 @@ public final class CatedraRestClient {
 		return value != null && value.isTextual() ? value.asText() : null;
 	}
 
-	private CatedraRestException translateTransportException(RestClientException exception) {
+	private CatedraRestException translateTransportException(ResourceAccessException exception) {
 		return hasTimeoutCause(exception)
 				? new CatedraTimeoutException(exception)
 				: new CatedraTransportException(exception);
