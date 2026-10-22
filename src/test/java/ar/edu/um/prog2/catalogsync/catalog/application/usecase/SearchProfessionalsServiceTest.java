@@ -19,7 +19,7 @@ class SearchProfessionalsServiceTest {
     void delegatesCriteriaAndReturnsThePortResult() {
         SearchProfessionalsPort searchPort = mock(SearchProfessionalsPort.class);
         SearchProfessionalsService service = new SearchProfessionalsService(searchPort);
-        ProfessionalSearchCriteria criteria = new ProfessionalSearchCriteria("Ana", 42L, false, 0, 20);
+        ProfessionalSearchCriteria criteria = new ProfessionalSearchCriteria("Ana", 42L, false, null, 0, 20);
         ProfessionalSearchResult expected = new ProfessionalSearchResult(List.of(), 0, 20, 0, 0);
         when(searchPort.search(criteria)).thenReturn(expected);
 
