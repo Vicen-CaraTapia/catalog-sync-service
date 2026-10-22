@@ -1,6 +1,6 @@
 # catalog-sync-service
 
-Backend Spring Boot que servirá como base del servicio de catálogo y sincronización.
+Backend Spring Boot que mantiene una réplica local del catálogo y expone consultas de profesionales.
 
 ## Requisitos
 
@@ -62,7 +62,7 @@ Configurá los valores reales desde la shell, IDE, CI/CD, Docker u otro entorno 
 | `CATEDRA_KAFKA_CONSUMER_GROUP_ID` | Identificador del grupo consumidor de Catálogo. |
 | `CATEDRA_KAFKA_CATALOG_TOPIC` | Topic de Kafka con notificaciones de actualización del catálogo. |
 
-El servicio cuenta con infraestructura para conectarse a REST, Redis y Kafka de la cátedra. Todavía no procesa eventos de catálogo ni implementa la sincronización.
+El servicio obtiene el snapshot de la cátedra para inicializar una base local sin versión aplicada. La sincronización incremental mediante eventos Kafka y datos Redis todavía no está implementada.
 
 No versionar secretos ni archivos locales como `.env` o `application-local.*`.
 
@@ -80,17 +80,48 @@ La respuesta debe incluir:
 {"status":"UP"}
 ```
 
+## Consultas locales del catálogo
+
+Las consultas de esta sección leen la réplica local de PostgreSQL. No consultan la API de la cátedra, Redis, Kafka ni las ocupaciones de turnos. Actualmente la configuración de seguridad solo permite el acceso anónimo a `/actuator/health`: las solicitudes HTTP a `/api/professionals` y `/api/professionals/{id}` reciben `403` hasta que se implemente la autenticación interna de C7.
+
+### Búsqueda de profesionales
+
+`GET /api/professionals` devuelve una página de profesionales. Los filtros son opcionales y se combinan con **AND**:
+
+| Parámetro | Significado |
+| --- | --- |
+| `name` | Coincidencia parcial, sin distinguir mayúsculas, en `firstName` o `lastName`. Se recortan los espacios de los extremos; un valor en blanco no filtra. Los caracteres `%`, `_` y `!` se buscan literalmente. |
+| `categoryId` | Coincidencia exacta con el ID de la categoría. |
+| `enabled` | Coincidencia exacta con `true` o `false`. Si se omite, se incluyen ambos estados. |
+| `availableOn` | Fecha ISO `YYYY-MM-DD`. Coincide si existe al menos un horario semanal local con `enabled=true` para el día de la semana de esa fecha. Si se omite, no se filtra por horarios. |
+| `page` | Número de página desde cero; por defecto `0`. |
+| `size` | Elementos por página; por defecto `20`, máximo `100`. |
+
+Por ejemplo, `GET /api/professionals?name=Ana&categoryId=3&enabled=true&availableOn=2026-10-26&page=0&size=20` busca profesionales habilitados que cumplan los demás filtros y tengan una regla semanal habilitada para el lunes. `availableOn` admite fechas pasadas y futuras; no aplica una ventana de reserva.
+
+El filtro `availableOn` representa **disponibilidad teórica de agenda semanal**. No exige implícitamente que el profesional tenga `enabled=true`: para eso se agrega `enabled=true` a la búsqueda. Tampoco comprueba una hora concreta, excepciones de calendario ni si existe un turno libre. El cálculo de turnos realmente disponibles corresponde al servicio de Turnos, que combina las reglas de agenda con las ocupaciones `HELD` y `CONFIRMED`.
+
+El controlador convierte la fecha a `LocalDate` y construye `ProfessionalSearchCriteria`. El caso de uso llama al puerto de búsqueda; `JpaProfessionalSearchAdapter` añade una subconsulta `EXISTS` sobre `weekly_schedules`, correlacionada por ID de profesional. Así, varios horarios coincidentes no duplican profesionales ni alteran los totales paginados.
+
+La respuesta del controlador contiene `content`, `page`, `size`, `totalElements` y `totalPages`. Cada elemento de `content` contiene `id`, `categoryId`, `firstName`, `lastName` y `enabled`; no expone entidades JPA ni marcas de tiempo. El orden es `lastName`, `firstName`, `id`, todos ascendentes. Una búsqueda sin coincidencias produce `200` con `content` vacío. Una fecha mal formada o una paginación inválida produce `400`, siempre que la solicitud llegue al controlador después del control de seguridad.
+
+### Detalle de un profesional
+
+`GET /api/professionals/{id}` devuelve el profesional, su categoría y sus horarios semanales locales, incluidos sus estados `enabled`. Los horarios deshabilitados permanecen visibles como tales. Un ID inexistente produce un `404` controlado. La respuesta tampoco expone entidades JPA.
+
 ## Verificación
 
 ```bash
 mvn clean verify
 ```
 
-Para verificar la conexión real a PostgreSQL:
+Para ejecutar las pruebas de integración con PostgreSQL, usá una base de pruebas separada y descartable:
 
 ```bash
 mvn -Ppostgres-integration clean verify
 ```
+
+Ese perfil incluye pruebas de aplicación del snapshot que reemplazan datos del catálogo y la versión local. No lo ejecutes contra una base con datos que quieras conservar. También ejecuta `JpaProfessionalSearchAdapterIT`, que comprueba la consulta local, la combinación de filtros y que múltiples horarios no dupliquen profesionales ni inflen los totales; ese test revierte sus propios datos de prueba al finalizar. Las pruebas unitarias y HTTP cubren la fecha opcional, su formato, los errores `400` y la página vacía. La verificación normal no requiere PostgreSQL externo.
 
 Para verificar los metadatos del topic de Kafka de la cátedra, configurá las tres variables `CATEDRA_KAFKA_*` indicadas arriba y ejecutá:
 

@@ -23,6 +23,17 @@ public final class CatalogPersistenceMapper {
         );
     }
 
+    public static ProfessionalCategory toDomain(ProfessionalCategoryEntity entity) {
+        return new ProfessionalCategory(
+                entity.getId(),
+                entity.getName(),
+                entity.getDescription(),
+                entity.isEnabled(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
+    }
+
     public static ProfessionalEntity toEntity(Professional professional) {
         return new ProfessionalEntity(
                 professional.id(),
@@ -32,6 +43,18 @@ public final class CatalogPersistenceMapper {
                 professional.enabled(),
                 professional.createdAt(),
                 professional.updatedAt()
+        );
+    }
+
+    public static Professional toDomain(ProfessionalEntity entity) {
+        return new Professional(
+                entity.getId(),
+                entity.getCategoryId(),
+                entity.getFirstName(),
+                entity.getLastName(),
+                entity.isEnabled(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
         );
     }
 
@@ -46,6 +69,20 @@ public final class CatalogPersistenceMapper {
                 weeklySchedule.enabled(),
                 weeklySchedule.createdAt(),
                 weeklySchedule.updatedAt()
+        );
+    }
+
+    public static WeeklySchedule toDomain(WeeklyScheduleEntity entity) {
+        return new WeeklySchedule(
+                entity.getId(),
+                entity.getProfessionalId(),
+                entity.getDayOfWeek(),
+                entity.getStartTime(),
+                entity.getEndTime(),
+                entity.getSlotDurationMinutes(),
+                entity.isEnabled(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
         );
     }
 }
