@@ -4,6 +4,7 @@ import ar.edu.um.prog2.catalogsync.catalog.domain.model.Professional;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearchCriteria;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearchResult;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalEntity;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.WeeklyScheduleEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.ProfessionalJpaRepository;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -11,7 +12,10 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +57,7 @@ class JpaProfessionalSearchAdapterTest {
                 .willReturn(new PageImpl<>(List.of(entity), pageable, 5));
 
         ProfessionalSearchResult result = adapter.search(
-                new ProfessionalSearchCriteria(null, null, null, 1, 2)
+                new ProfessionalSearchCriteria(null, null, null, null, 1, 2)
         );
 
         assertThat(result.content()).containsExactly(
@@ -84,7 +88,7 @@ class JpaProfessionalSearchAdapterTest {
     @Test
     void buildsNameCategoryAndEnabledPredicatesWithLiteralLikeEscaping() {
         ProfessionalSearchCriteria criteria = new ProfessionalSearchCriteria(
-                "A%_!", 7L, false, 0, 20
+                "A%_!", 7L, false, null, 0, 20
         );
         Root<ProfessionalEntity> root = mock(Root.class);
         CriteriaQuery<?> query = mock(CriteriaQuery.class);
@@ -127,10 +131,45 @@ class JpaProfessionalSearchAdapterTest {
         Predicate predicate = mock(Predicate.class);
         when(builder.and()).thenReturn(predicate);
 
-        assertThat(specificationFor(new ProfessionalSearchCriteria(null, null, null, 0, 20))
+        assertThat(specificationFor(new ProfessionalSearchCriteria(null, null, null, null, 0, 20))
                 .toPredicate(root, query, builder)).isSameAs(predicate);
 
         verify(builder).and();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void addsCorrelatedExistsForEnabledScheduleOnRequestedWeekday() {
+        ProfessionalSearchCriteria criteria = new ProfessionalSearchCriteria(
+                null, null, null, LocalDate.of(2026, 10, 26), 0, 20
+        );
+        Root<ProfessionalEntity> root = mock(Root.class);
+        CriteriaQuery<?> query = mock(CriteriaQuery.class);
+        CriteriaBuilder builder = mock(CriteriaBuilder.class);
+        Subquery<Long> subquery = mock(Subquery.class);
+        Root<WeeklyScheduleEntity> schedule = mock(Root.class);
+        Path<Object> field = mock(Path.class);
+        Predicate exists = mock(Predicate.class);
+        Predicate combined = mock(Predicate.class);
+        when(query.subquery(Long.class)).thenReturn(subquery);
+        when(subquery.from(WeeklyScheduleEntity.class)).thenReturn(schedule);
+        when(root.get("id")).thenReturn(field);
+        when(schedule.get(anyString())).thenReturn(field);
+        when(subquery.select(any())).thenReturn(subquery);
+        when(builder.exists(subquery)).thenReturn(exists);
+        when(builder.and(any(Predicate[].class))).thenReturn(combined);
+
+        Predicate result = specificationFor(criteria).toPredicate(root, query, builder);
+
+        assertThat(result).isSameAs(combined);
+        verify(schedule).get("professionalId");
+        verify(schedule).get("enabled");
+        verify(schedule).get("dayOfWeek");
+        verify(builder).equal(field, field);
+        verify(builder).isTrue(any());
+        verify(builder).equal(field, DayOfWeek.MONDAY);
+        verify(builder).exists(subquery);
+        verify(builder).and(exists);
     }
 
     @SuppressWarnings("unchecked")

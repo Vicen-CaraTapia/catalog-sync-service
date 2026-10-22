@@ -8,10 +8,15 @@ import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearc
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.SearchProfessionalsUseCase;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalCategoryEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalEntity;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.WeeklyScheduleEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.ProfessionalCategoryJpaRepository;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.ProfessionalJpaRepository;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.WeeklyScheduleJpaRepository;
 import jakarta.persistence.EntityManager;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +41,12 @@ class JpaProfessionalSearchAdapterIT {
     private static final long SECOND_ID = -41_102L;
     private static final long THIRD_ID = -41_103L;
     private static final long FOURTH_ID = -41_104L;
+    private static final long FIRST_SCHEDULE_ID = -41_201L;
+    private static final long SECOND_SCHEDULE_ID = -41_202L;
+    private static final long THIRD_SCHEDULE_ID = -41_203L;
+    private static final long FOURTH_SCHEDULE_ID = -41_204L;
+    private static final long FIFTH_SCHEDULE_ID = -41_205L;
+    private static final LocalDate MONDAY = LocalDate.of(2026, 10, 26);
     private static final Instant CREATED_AT = Instant.parse("2026-10-20T00:00:00Z");
     private static final Instant UPDATED_AT = Instant.parse("2026-10-20T01:00:00Z");
 
@@ -47,6 +58,9 @@ class JpaProfessionalSearchAdapterIT {
 
     @Autowired
     private ProfessionalJpaRepository professionalRepository;
+
+    @Autowired
+    private WeeklyScheduleJpaRepository scheduleRepository;
 
     @Autowired
     private EntityManager entityManager;
@@ -229,8 +243,90 @@ class JpaProfessionalSearchAdapterIT {
         assertThat(result.totalPages()).isEqualTo(1);
     }
 
+    @Test
+    void filtersByEnabledScheduleOnRequestedWeekdayWithoutImplicitProfessionalStateFilter() {
+        insertProfessionals(
+                professional(FIRST_ID, CATEGORY_ID, "Ana", "Gomez", true),
+                professional(SECOND_ID, CATEGORY_ID, "Luis", "Perez", false),
+                professional(THIRD_ID, CATEGORY_ID, "Marta", "Diaz", true),
+                professional(FOURTH_ID, CATEGORY_ID, "Zoe", "Taylor", true)
+        );
+        insertSchedules(
+                schedule(FIRST_SCHEDULE_ID, FIRST_ID, DayOfWeek.MONDAY, true),
+                schedule(SECOND_SCHEDULE_ID, SECOND_ID, DayOfWeek.MONDAY, true),
+                schedule(THIRD_SCHEDULE_ID, THIRD_ID, DayOfWeek.MONDAY, false),
+                schedule(FOURTH_SCHEDULE_ID, FOURTH_ID, DayOfWeek.TUESDAY, true)
+        );
+
+        ProfessionalSearchResult result = search(null, CATEGORY_ID, null, MONDAY, 0, 20);
+
+        assertThat(result.content()).extracting(Professional::id).containsExactly(FIRST_ID, SECOND_ID);
+        assertThat(result.totalElements()).isEqualTo(2);
+        assertThat(search(null, CATEGORY_ID, true, MONDAY, 0, 20).content())
+                .extracting(Professional::id).containsExactly(FIRST_ID);
+        assertThat(search(null, CATEGORY_ID, false, MONDAY, 0, 20).content())
+                .extracting(Professional::id).containsExactly(SECOND_ID);
+        assertThat(search(null, CATEGORY_ID, null, MONDAY.plusWeeks(1), 0, 20).content())
+                .extracting(Professional::id).containsExactly(FIRST_ID, SECOND_ID);
+        assertThat(search(null, CATEGORY_ID, null, MONDAY.plusDays(6), 0, 20).content()).isEmpty();
+        assertThat(search(null, CATEGORY_ID, null, MONDAY.plusDays(6), 0, 20).totalElements()).isZero();
+        assertThat(search(null, CATEGORY_ID, null, 0, 20).totalElements()).isEqualTo(4);
+    }
+
+    @Test
+    void multipleMatchingSchedulesDoNotDuplicateProfessionalsOrInflatePageTotals() {
+        insertProfessionals(
+                professional(FIRST_ID, CATEGORY_ID, "Ana", "Alfa", true),
+                professional(SECOND_ID, CATEGORY_ID, "Luis", "Beta", true)
+        );
+        insertSchedules(
+                schedule(FIRST_SCHEDULE_ID, FIRST_ID, DayOfWeek.MONDAY, true),
+                schedule(SECOND_SCHEDULE_ID, FIRST_ID, DayOfWeek.MONDAY, true),
+                schedule(THIRD_SCHEDULE_ID, SECOND_ID, DayOfWeek.MONDAY, true)
+        );
+
+        ProfessionalSearchResult firstPage = search(null, CATEGORY_ID, null, MONDAY, 0, 1);
+        ProfessionalSearchResult secondPage = search(null, CATEGORY_ID, null, MONDAY, 1, 1);
+
+        assertThat(firstPage.content()).extracting(Professional::id).containsExactly(FIRST_ID);
+        assertThat(secondPage.content()).extracting(Professional::id).containsExactly(SECOND_ID);
+        assertThat(firstPage.totalElements()).isEqualTo(2);
+        assertThat(secondPage.totalElements()).isEqualTo(2);
+        assertThat(firstPage.totalPages()).isEqualTo(2);
+        assertThat(secondPage.totalPages()).isEqualTo(2);
+    }
+
+    @Test
+    void combinesAvailabilityWithNameCategoryAndEnabledFilters() {
+        insertProfessionals(
+                professional(FIRST_ID, CATEGORY_ID, "Ana", "Gomez", true),
+                professional(SECOND_ID, CATEGORY_ID, "Ana", "Perez", false),
+                professional(THIRD_ID, OTHER_CATEGORY_ID, "Ana", "Diaz", true),
+                professional(FOURTH_ID, CATEGORY_ID, "Marta", "Garcia", true)
+        );
+        insertSchedules(
+                schedule(FIRST_SCHEDULE_ID, FIRST_ID, DayOfWeek.MONDAY, true),
+                schedule(SECOND_SCHEDULE_ID, SECOND_ID, DayOfWeek.MONDAY, true),
+                schedule(THIRD_SCHEDULE_ID, THIRD_ID, DayOfWeek.MONDAY, true),
+                schedule(FOURTH_SCHEDULE_ID, FOURTH_ID, DayOfWeek.MONDAY, true)
+        );
+
+        ProfessionalSearchResult result = search("ana", CATEGORY_ID, true, MONDAY, 0, 20);
+
+        assertThat(result.content()).extracting(Professional::id).containsExactly(FIRST_ID);
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
     private ProfessionalSearchResult search(String name, Long categoryId, Boolean enabled, int page, int size) {
-        return searchProfessionals.search(new ProfessionalSearchCriteria(name, categoryId, enabled, page, size));
+        return search(name, categoryId, enabled, null, page, size);
+    }
+
+    private ProfessionalSearchResult search(
+            String name, Long categoryId, Boolean enabled, LocalDate availableOn, int page, int size
+    ) {
+        return searchProfessionals.search(
+                new ProfessionalSearchCriteria(name, categoryId, enabled, availableOn, page, size)
+        );
     }
 
     private void insertProfessionals(ProfessionalEntity... professionals) {
@@ -238,6 +334,14 @@ class JpaProfessionalSearchAdapterIT {
             assertThat(professionalRepository.existsById(professional.getId())).isFalse();
         }
         professionalRepository.saveAllAndFlush(List.of(professionals));
+        entityManager.clear();
+    }
+
+    private void insertSchedules(WeeklyScheduleEntity... schedules) {
+        for (WeeklyScheduleEntity schedule : schedules) {
+            assertThat(scheduleRepository.existsById(schedule.getId())).isFalse();
+        }
+        scheduleRepository.saveAllAndFlush(List.of(schedules));
         entityManager.clear();
     }
 
@@ -249,5 +353,12 @@ class JpaProfessionalSearchAdapterIT {
             long id, long categoryId, String firstName, String lastName, boolean enabled
     ) {
         return new ProfessionalEntity(id, categoryId, firstName, lastName, enabled, CREATED_AT, UPDATED_AT);
+    }
+
+    private static WeeklyScheduleEntity schedule(long id, long professionalId, DayOfWeek dayOfWeek, boolean enabled) {
+        return new WeeklyScheduleEntity(
+                id, professionalId, dayOfWeek, LocalTime.of(9, 0), LocalTime.of(12, 0), 30,
+                enabled, CREATED_AT, UPDATED_AT
+        );
     }
 }

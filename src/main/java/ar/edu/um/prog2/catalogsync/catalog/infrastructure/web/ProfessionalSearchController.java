@@ -8,8 +8,10 @@ import ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.dto.ProfessionalSe
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.dto.ProfessionalSummaryResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,10 +34,11 @@ public class ProfessionalSearchController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate availableOn,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(ProfessionalSearchCriteria.MAX_SIZE) int size
     ) {
-        var criteria = new ProfessionalSearchCriteria(name, categoryId, enabled, page, size);
+        var criteria = new ProfessionalSearchCriteria(name, categoryId, enabled, availableOn, page, size);
         return toResponse(searchProfessionalsUseCase.search(criteria));
     }
 

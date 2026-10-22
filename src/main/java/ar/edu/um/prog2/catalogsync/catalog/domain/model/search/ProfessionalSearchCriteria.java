@@ -1,9 +1,12 @@
 package ar.edu.um.prog2.catalogsync.catalog.domain.model.search;
 
+import java.time.LocalDate;
+
 public record ProfessionalSearchCriteria(
         String name,
         Long categoryId,
         Boolean enabled,
+        LocalDate availableOn,
         int page,
         int size
 ) {

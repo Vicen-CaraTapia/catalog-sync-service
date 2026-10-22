@@ -5,6 +5,7 @@ import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearc
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearchResult;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.SearchProfessionalsUseCase;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +66,7 @@ class ProfessionalSearchControllerTest {
                 .andExpect(jsonPath("$.content[0].updatedAt").doesNotExist());
 
         verify(searchProfessionalsUseCase).search(
-                new ProfessionalSearchCriteria("Ana", 3L, false, 1, 2)
+                new ProfessionalSearchCriteria("Ana", 3L, false, null, 1, 2)
         );
     }
 
@@ -82,8 +83,37 @@ class ProfessionalSearchControllerTest {
                 .andExpect(jsonPath("$.size").value(20));
 
         verify(searchProfessionalsUseCase).search(
-                new ProfessionalSearchCriteria(null, null, null, 0, 20)
+                new ProfessionalSearchCriteria(null, null, null, null, 0, 20)
         );
+    }
+
+    @Test
+    void passesAvailabilityDateWithOtherFiltersAndReturnsAnEmptyPage() throws Exception {
+        given(searchProfessionalsUseCase.search(any())).willReturn(new ProfessionalSearchResult(
+                List.of(), 0, 20, 0, 0
+        ));
+
+        mockMvc.perform(get("/api/professionals")
+                        .param("name", "  Ana  ")
+                        .param("categoryId", "3")
+                        .param("enabled", "true")
+                        .param("availableOn", "2026-10-26"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
+
+        verify(searchProfessionalsUseCase).search(
+                new ProfessionalSearchCriteria("Ana", 3L, true, LocalDate.of(2026, 10, 26), 0, 20)
+        );
+    }
+
+    @Test
+    void rejectsInvalidAvailabilityDateBeforeCallingTheUseCase() throws Exception {
+        mockMvc.perform(get("/api/professionals").param("availableOn", "26-10-2026"))
+                .andExpect(status().isBadRequest());
+
+        verify(searchProfessionalsUseCase, never()).search(any());
     }
 
     @Test
