@@ -35,6 +35,18 @@ class CatalogPersistenceMapperTest {
     }
 
     @Test
+    void mapsCategoryPersistenceEntityToDomainModelWithNullableDescription() {
+        ProfessionalCategoryEntity entity = new ProfessionalCategoryEntity(
+                7L, "Cardiology", null, false, CREATED_AT, UPDATED_AT
+        );
+
+        assertThat(CatalogPersistenceMapper.toDomain(entity))
+                .isEqualTo(new ProfessionalCategory(
+                        7L, "Cardiology", null, false, CREATED_AT, UPDATED_AT
+                ));
+    }
+
+    @Test
     void mapsProfessionalDomainModelToPersistenceEntity() {
         Professional professional = professional(13L, 7L, "Ana", "Gomez", false);
 
@@ -84,6 +96,34 @@ class CatalogPersistenceMapperTest {
         assertThat(entity.isEnabled()).isFalse();
         assertThat(entity.getCreatedAt()).isEqualTo(CREATED_AT);
         assertThat(entity.getUpdatedAt()).isEqualTo(UPDATED_AT);
+    }
+
+    @Test
+    void mapsDisabledWeeklySchedulePersistenceEntityToDomainModel() {
+        WeeklyScheduleEntity entity = new WeeklyScheduleEntity(
+                29L,
+                13L,
+                DayOfWeek.THURSDAY,
+                LocalTime.of(9, 30),
+                LocalTime.of(13, 0),
+                30,
+                false,
+                CREATED_AT,
+                UPDATED_AT
+        );
+
+        assertThat(CatalogPersistenceMapper.toDomain(entity))
+                .isEqualTo(new WeeklySchedule(
+                        29L,
+                        13L,
+                        DayOfWeek.THURSDAY,
+                        LocalTime.of(9, 30),
+                        LocalTime.of(13, 0),
+                        30,
+                        false,
+                        CREATED_AT,
+                        UPDATED_AT
+                ));
     }
 
     private static Professional professional(

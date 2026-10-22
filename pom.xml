@@ -138,6 +138,7 @@
 										<include>**/ApplyCatalogSnapshotIT.java</include>
 										<include>**/CatalogInitializationIT.java</include>
 										<include>**/JpaProfessionalSearchAdapterIT.java</include>
+										<include>**/JpaProfessionalDetailsAdapterIT.java</include>
 									</includes>
 									<summaryFile>${project.build.directory}/failsafe-reports/postgres-summary.xml</summaryFile>
 								</configuration>
