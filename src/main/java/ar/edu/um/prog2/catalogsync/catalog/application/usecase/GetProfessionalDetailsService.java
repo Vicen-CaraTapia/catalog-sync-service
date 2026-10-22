@@ -4,9 +4,11 @@ import ar.edu.um.prog2.catalogsync.catalog.application.exception.ProfessionalNot
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.ProfessionalDetails;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.GetProfessionalDetailsUseCase;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.LoadProfessionalDetailsPort;
+import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 
+@Service
 public final class GetProfessionalDetailsService implements GetProfessionalDetailsUseCase {
 
     private final LoadProfessionalDetailsPort detailsPort;
