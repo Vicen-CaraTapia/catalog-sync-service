@@ -48,4 +48,12 @@ class CatalogSyncApplicationTests {
 				.jsonPath("$.status").isEqualTo("UP");
 	}
 
+	@Test
+	void apiPathsAreDeniedUntilInternalJwtSecurityIsImplemented(@Autowired RestTestClient restClient) {
+		restClient.get()
+				.uri("/api/professionals")
+				.exchange()
+				.expectStatus().isForbidden();
+	}
+
 }
