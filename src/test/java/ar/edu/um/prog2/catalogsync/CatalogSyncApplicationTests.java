@@ -54,6 +54,10 @@ class CatalogSyncApplicationTests {
 				.uri("/api/professionals")
 				.exchange()
 				.expectStatus().isForbidden();
+		restClient.get()
+				.uri("/api/professionals/10")
+				.exchange()
+				.expectStatus().isForbidden();
 	}
 
 }
