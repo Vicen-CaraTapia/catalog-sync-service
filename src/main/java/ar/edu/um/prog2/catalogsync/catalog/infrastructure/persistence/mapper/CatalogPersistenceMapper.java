@@ -35,6 +35,18 @@ public final class CatalogPersistenceMapper {
         );
     }
 
+    public static Professional toDomain(ProfessionalEntity entity) {
+        return new Professional(
+                entity.getId(),
+                entity.getCategoryId(),
+                entity.getFirstName(),
+                entity.getLastName(),
+                entity.isEnabled(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
+    }
+
     public static WeeklyScheduleEntity toEntity(WeeklySchedule weeklySchedule) {
         return new WeeklyScheduleEntity(
                 weeklySchedule.id(),
