@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.application.usecase;
+package ar.edu.um.prog2.catalogsync.catalog.application.usecases;
 
 import ar.edu.um.prog2.catalogsync.catalog.application.exception.ProfessionalNotFoundException;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.ProfessionalDetails;
@@ -9,11 +9,11 @@ import org.springframework.stereotype.Service;
 import java.util.Objects;
 
 @Service
-public final class GetProfessionalDetailsService implements GetProfessionalDetailsUseCase {
+public final class GetProfessionalDetailsUseCaseImpl implements GetProfessionalDetailsUseCase {
 
     private final LoadProfessionalDetailsPort detailsPort;
 
-    public GetProfessionalDetailsService(LoadProfessionalDetailsPort detailsPort) {
+    public GetProfessionalDetailsUseCaseImpl(LoadProfessionalDetailsPort detailsPort) {
         this.detailsPort = Objects.requireNonNull(detailsPort);
     }
 

@@ -1,7 +1,7 @@
 package ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.exception;
 
 import ar.edu.um.prog2.catalogsync.catalog.application.exception.ProfessionalNotFoundException;
-import ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.ProfessionalDetailsController;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.controller.ProfessionalDetailsController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;

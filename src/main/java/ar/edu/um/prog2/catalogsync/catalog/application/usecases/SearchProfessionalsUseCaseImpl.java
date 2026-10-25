@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.application.usecase;
+package ar.edu.um.prog2.catalogsync.catalog.application.usecases;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearchCriteria;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearchResult;
@@ -8,11 +8,11 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
-public final class SearchProfessionalsService implements SearchProfessionalsUseCase {
+public final class SearchProfessionalsUseCaseImpl implements SearchProfessionalsUseCase {
 
     private final SearchProfessionalsPort searchPort;
 
-    public SearchProfessionalsService(SearchProfessionalsPort searchPort) {
+    public SearchProfessionalsUseCaseImpl(SearchProfessionalsPort searchPort) {
         this.searchPort = Objects.requireNonNull(searchPort);
     }
 

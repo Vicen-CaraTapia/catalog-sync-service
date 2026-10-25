@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.application.usecase;
+package ar.edu.um.prog2.catalogsync.catalog.application.usecases;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
@@ -20,7 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class ApplyCatalogSnapshotServiceTest {
+class ApplyCatalogSnapshotUseCaseImplTest {
 
     private static final Instant CREATED_AT = Instant.parse("2026-10-20T00:00:00Z");
     private static final Instant UPDATED_AT = Instant.parse("2026-10-20T01:00:00Z");
@@ -28,11 +28,11 @@ class ApplyCatalogSnapshotServiceTest {
     @Mock
     private CatalogSnapshotPersistencePort persistencePort;
 
-    private ApplyCatalogSnapshotService service;
+    private ApplyCatalogSnapshotUseCaseImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ApplyCatalogSnapshotService(persistencePort);
+        service = new ApplyCatalogSnapshotUseCaseImpl(persistencePort);
     }
 
     @Test

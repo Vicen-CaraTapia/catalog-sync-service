@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.application.usecase;
+package ar.edu.um.prog2.catalogsync.catalog.application.usecases;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -13,12 +13,12 @@ import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.SearchProfessionalsP
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class SearchProfessionalsServiceTest {
+class SearchProfessionalsUseCaseImplTest {
 
     @Test
     void delegatesCriteriaAndReturnsThePortResult() {
         SearchProfessionalsPort searchPort = mock(SearchProfessionalsPort.class);
-        SearchProfessionalsService service = new SearchProfessionalsService(searchPort);
+        SearchProfessionalsUseCaseImpl service = new SearchProfessionalsUseCaseImpl(searchPort);
         ProfessionalSearchCriteria criteria = new ProfessionalSearchCriteria("Ana", 42L, false, null, 0, 20);
         ProfessionalSearchResult expected = new ProfessionalSearchResult(List.of(), 0, 20, 0, 0);
         when(searchPort.search(criteria)).thenReturn(expected);
@@ -32,7 +32,7 @@ class SearchProfessionalsServiceTest {
     @Test
     void rejectsNullCriteriaWithoutCallingThePort() {
         SearchProfessionalsPort searchPort = mock(SearchProfessionalsPort.class);
-        SearchProfessionalsService service = new SearchProfessionalsService(searchPort);
+        SearchProfessionalsUseCaseImpl service = new SearchProfessionalsUseCaseImpl(searchPort);
 
         assertThatThrownBy(() -> service.search(null)).isInstanceOf(NullPointerException.class);
 

@@ -3,6 +3,7 @@ package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.verific
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadCatalogIncrementalChangesPort;
+import ar.edu.um.prog2.catalogsynctest.redis.RedisIntegrationTestApplication;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.application.usecase;
+package ar.edu.um.prog2.catalogsync.catalog.application.usecases;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.ApplyCatalogSnapshotUseCase;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.InitializeCatalogUseCase;
@@ -8,13 +8,13 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
-public final class InitializeCatalogService implements InitializeCatalogUseCase {
+public final class InitializeCatalogUseCaseImpl implements InitializeCatalogUseCase {
 
     private final CatalogInitializationStatePort initializationStatePort;
     private final FetchCatalogSnapshotPort fetchCatalogSnapshotPort;
     private final ApplyCatalogSnapshotUseCase applyCatalogSnapshotUseCase;
 
-    public InitializeCatalogService(
+    public InitializeCatalogUseCaseImpl(
             CatalogInitializationStatePort initializationStatePort,
             FetchCatalogSnapshotPort fetchCatalogSnapshotPort,
             ApplyCatalogSnapshotUseCase applyCatalogSnapshotUseCase

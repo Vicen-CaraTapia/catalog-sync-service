@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.infrastructure.web;
+package ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.controller;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.Professional;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.search.ProfessionalSearchCriteria;
