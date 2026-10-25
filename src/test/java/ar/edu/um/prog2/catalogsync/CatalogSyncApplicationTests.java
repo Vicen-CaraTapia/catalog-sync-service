@@ -7,6 +7,7 @@ import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.ProfessionalJpaRepository;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.WeeklyScheduleJpaRepository;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.CatalogUpdateNotificationUseCase;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.listener.CatalogUpdatedListener;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -66,12 +67,12 @@ class CatalogSyncApplicationTests {
 	}
 
 	@Test
-	void catalogUpdatedListenerIsRegisteredButInactiveWithoutAUseCase(
+	void catalogUpdatedListenerIsRegisteredButInactiveWithTheOrchestrationUseCase(
 			@Autowired ApplicationContext context,
 			@Autowired KafkaListenerEndpointRegistry registry
 	) {
-		assertThat(context.getBeansOfType(CatalogUpdateNotificationUseCase.class)).isEmpty();
-		var container = registry.getListenerContainer("catedraCatalogUpdatedListener");
+		assertThat(context.getBeansOfType(CatalogUpdateNotificationUseCase.class)).hasSize(1);
+		var container = registry.getListenerContainer(CatalogUpdatedListener.LISTENER_ID);
 		assertThat(container).isNotNull();
 		assertThat(container.isRunning()).isFalse();
 	}

@@ -3,8 +3,8 @@ package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.listene
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.CatalogUpdateNotificationUseCase;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.decoder.CatalogUpdatedEventDecoder;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.exception.InvalidCatalogUpdatedEventException;
+import java.util.Objects;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
@@ -13,19 +13,21 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public final class CatalogUpdatedListener {
 
+	public static final String LISTENER_ID = "catedraCatalogUpdatedListener";
+
 	private final CatalogUpdatedEventDecoder decoder;
-	private final ObjectProvider<CatalogUpdateNotificationUseCase> useCaseProvider;
+	private final CatalogUpdateNotificationUseCase useCase;
 
 	public CatalogUpdatedListener(
 			ObjectMapper objectMapper,
-			ObjectProvider<CatalogUpdateNotificationUseCase> useCaseProvider
+			CatalogUpdateNotificationUseCase useCase
 	) {
 		this.decoder = new CatalogUpdatedEventDecoder(objectMapper);
-		this.useCaseProvider = useCaseProvider;
+		this.useCase = Objects.requireNonNull(useCase);
 	}
 
 	@KafkaListener(
-			id = "catedraCatalogUpdatedListener",
+			id = LISTENER_ID,
 			idIsGroup = false,
 			topics = "${catedra.kafka.catalog-topic}",
 			containerFactory = "catedraCatalogListenerContainerFactory",
@@ -40,10 +42,7 @@ public final class CatalogUpdatedListener {
 			throw new InvalidCatalogUpdatedEventException();
 		}
 
-		var useCase = useCaseProvider.getIfAvailable();
-		if (useCase == null) {
-			throw new IllegalStateException("Catalog update notification use case is not configured.");
-		}
 		useCase.onCatalogUpdated(event.eventId(), event.newVersion());
+		acknowledgment.acknowledge();
 	}
 }

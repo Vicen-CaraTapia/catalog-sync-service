@@ -146,3 +146,11 @@ mvn -Pkafka-integration clean verify
 ```
 
 Esta prueba consulta metadatos; no consume mensajes ni modifica offsets.
+
+Para comprobar el caso de una notificación repetida con el PostgreSQL local y el Redis reales, cargá las variables externas y ejecutá:
+
+```bash
+./mvnw -Pcatedra-live-noop verify
+```
+
+Este perfil compara ambas versiones antes de invocar el listener con una notificación de prueba para la versión ya aplicada. Si difieren, falla antes de entrar en el flujo. Comprueba que la versión y los conteos locales no cambien. No consume un registro del broker ni confirma un offset real; la confirmación se verifica con un objeto de prueba. El perfil no se ejecuta durante `./mvnw verify` normal.
