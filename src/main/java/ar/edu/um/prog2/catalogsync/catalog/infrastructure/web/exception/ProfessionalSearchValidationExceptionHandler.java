@@ -1,6 +1,6 @@
 package ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.exception;
 
-import ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.ProfessionalSearchController;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.controller.ProfessionalSearchController;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;

@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.infrastructure.web;
+package ar.edu.um.prog2.catalogsync.catalog.infrastructure.web.controller;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.ProfessionalDetails;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.GetProfessionalDetailsUseCase;

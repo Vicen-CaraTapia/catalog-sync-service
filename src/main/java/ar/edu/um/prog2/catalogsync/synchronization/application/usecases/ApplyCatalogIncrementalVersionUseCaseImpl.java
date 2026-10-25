@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.application.usecase;
+package ar.edu.um.prog2.catalogsync.synchronization.application.usecases;
 
 import ar.edu.um.prog2.catalogsync.synchronization.domain.model.CatalogIncrementalChanges;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.ApplyCatalogIncrementalVersionUseCase;

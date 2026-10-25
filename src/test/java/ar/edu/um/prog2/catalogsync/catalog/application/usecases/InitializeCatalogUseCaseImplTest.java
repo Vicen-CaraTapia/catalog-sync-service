@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.application.usecase;
+package ar.edu.um.prog2.catalogsync.catalog.application.usecases;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
@@ -19,7 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class InitializeCatalogServiceTest {
+class InitializeCatalogUseCaseImplTest {
 
     @Mock
     private CatalogInitializationStatePort initializationStatePort;
@@ -30,11 +30,11 @@ class InitializeCatalogServiceTest {
     @Mock
     private ApplyCatalogSnapshotUseCase applyCatalogSnapshotUseCase;
 
-    private InitializeCatalogService service;
+    private InitializeCatalogUseCaseImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new InitializeCatalogService(
+        service = new InitializeCatalogUseCaseImpl(
                 initializationStatePort,
                 fetchCatalogSnapshotPort,
                 applyCatalogSnapshotUseCase

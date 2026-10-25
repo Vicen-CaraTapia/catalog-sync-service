@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.catalog.application.usecase;
+package ar.edu.um.prog2.catalogsync.catalog.application.usecases;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,12 +19,12 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class GetProfessionalDetailsServiceTest {
+class GetProfessionalDetailsUseCaseImplTest {
 
     @Test
     void returnsLocalDetailsIncludingDisabledSchedule() {
         LoadProfessionalDetailsPort port = mock(LoadProfessionalDetailsPort.class);
-        GetProfessionalDetailsService service = new GetProfessionalDetailsService(port);
+        GetProfessionalDetailsUseCaseImpl service = new GetProfessionalDetailsUseCaseImpl(port);
         Instant now = Instant.parse("2026-10-22T12:00:00Z");
         ProfessionalDetails expected = new ProfessionalDetails(
                 new Professional(7L, 3L, "Ana", "García", true, now, now),
@@ -47,7 +47,7 @@ class GetProfessionalDetailsServiceTest {
     @Test
     void throwsControlledExceptionWhenProfessionalDoesNotExist() {
         LoadProfessionalDetailsPort port = mock(LoadProfessionalDetailsPort.class);
-        GetProfessionalDetailsService service = new GetProfessionalDetailsService(port);
+        GetProfessionalDetailsUseCaseImpl service = new GetProfessionalDetailsUseCaseImpl(port);
         when(port.findByProfessionalId(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getById(999L))

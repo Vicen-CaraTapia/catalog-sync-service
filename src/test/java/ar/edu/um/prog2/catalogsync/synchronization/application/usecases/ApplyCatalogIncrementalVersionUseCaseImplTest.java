@@ -6,7 +6,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import ar.edu.um.prog2.catalogsync.synchronization.application.usecase.ApplyCatalogIncrementalVersionUseCaseImpl;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.model.CatalogIncrementalChanges;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.CatalogIncrementalPersistencePort;
 import java.util.List;
