@@ -115,6 +115,22 @@ La respuesta del controlador contiene `content`, `page`, `size`, `totalElements`
 mvn clean verify
 ```
 
+Para probar la lectura incremental contra un Redis real y aislado, instalá `redis-server` en el `PATH` y ejecutá:
+
+```bash
+./mvnw -Predis-local-integration clean verify
+```
+
+Ese perfil inicia un Redis temporal en `127.0.0.1` con credenciales ficticias, carga únicamente datos de prueba y cierra el proceso al terminar. Comprueba la lectura de metadata, changesets y entidades, incluidos los datos ausentes o inválidos. No usa las credenciales ni modifica el Redis de la cátedra; la verificación normal no requiere `redis-server`.
+
+Para comprobar la lectura contra el Redis de la cátedra, configurá `CATEDRA_REDIS_HOST`, `CATEDRA_REDIS_PORT`, `CATEDRA_REDIS_USERNAME` y `CATEDRA_REDIS_PASSWORD` fuera del repositorio y ejecutá:
+
+```bash
+./mvnw -Predis-integration clean verify
+```
+
+Este perfil solo lee: comprueba acceso, metadata y el changeset de la versión actual. Si esa clave no está retenida, la prueba de entidades se omite explícitamente. No carga fixtures ni modifica claves o PostgreSQL.
+
 Para ejecutar las pruebas de integración con PostgreSQL, usá una base de pruebas separada y descartable:
 
 ```bash
