@@ -66,11 +66,11 @@ class CatalogSyncApplicationTests {
 	}
 
 	@Test
-	void catalogUpdatedListenerIsRegisteredButInactiveWithoutAUseCase(
+	void catalogUpdatedListenerIsRegisteredButInactiveWithTheOrchestrationUseCase(
 			@Autowired ApplicationContext context,
 			@Autowired KafkaListenerEndpointRegistry registry
 	) {
-		assertThat(context.getBeansOfType(CatalogUpdateNotificationUseCase.class)).isEmpty();
+		assertThat(context.getBeansOfType(CatalogUpdateNotificationUseCase.class)).hasSize(1);
 		var container = registry.getListenerContainer("catedraCatalogUpdatedListener");
 		assertThat(container).isNotNull();
 		assertThat(container.isRunning()).isFalse();
