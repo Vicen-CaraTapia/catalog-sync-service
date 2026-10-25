@@ -1,5 +1,7 @@
 package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.verification;
 
+import ar.edu.um.prog2.catalogsynctest.redis.RedisIntegrationTestApplication;
+
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.client.CatedraRedisClient;

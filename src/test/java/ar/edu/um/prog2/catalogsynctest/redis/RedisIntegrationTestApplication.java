@@ -1,4 +1,4 @@
-package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.verification;
+package ar.edu.um.prog2.catalogsynctest.redis;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.adapter.CatedraRedisCatalogChangesAdapter;
@@ -22,5 +22,5 @@ import org.springframework.context.annotation.Import;
         CatedraRedisClient.class,
         CatedraRedisCatalogChangesAdapter.class
 })
-class RedisIntegrationTestApplication {
+public class RedisIntegrationTestApplication {
 }

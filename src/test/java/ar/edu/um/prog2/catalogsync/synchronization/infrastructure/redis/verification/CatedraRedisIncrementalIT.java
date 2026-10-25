@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadCatalogIncrementalChangesPort;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.exception.InvalidCatedraRedisDataException;
+import ar.edu.um.prog2.catalogsynctest.redis.RedisIntegrationTestApplication;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
