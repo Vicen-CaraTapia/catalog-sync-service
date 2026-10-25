@@ -12,7 +12,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
 @Configuration(proxyBeanMethods = false)
-class CatedraKafkaConfiguration {
+public class CatedraKafkaConfiguration {
 
 	@Bean
 	ConsumerFactory<String, String> catedraKafkaConsumerFactory(CatedraIntegrationProperties properties) {

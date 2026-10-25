@@ -22,6 +22,8 @@ catedra:
 catalog:
   initialization:
     enabled: false
+  incremental-consumer:
+    enabled: false
 
 management:
   health:
