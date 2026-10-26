@@ -115,6 +115,22 @@ La respuesta del controlador contiene `content`, `page`, `size`, `totalElements`
 mvn clean verify
 ```
 
+Para probar la lectura incremental contra un Redis real y aislado, instalá `redis-server` en el `PATH` y ejecutá:
+
+```bash
+./mvnw -Predis-local-integration clean verify
+```
+
+Ese perfil inicia un Redis temporal en `127.0.0.1` con credenciales ficticias, carga únicamente datos de prueba y cierra el proceso al terminar. Comprueba la lectura de metadata, changesets y entidades, incluidos los datos ausentes o inválidos. No usa las credenciales ni modifica el Redis de la cátedra; la verificación normal no requiere `redis-server`.
+
+Para comprobar la lectura contra el Redis de la cátedra, configurá `CATEDRA_REDIS_HOST`, `CATEDRA_REDIS_PORT`, `CATEDRA_REDIS_USERNAME` y `CATEDRA_REDIS_PASSWORD` fuera del repositorio y ejecutá:
+
+```bash
+./mvnw -Predis-integration clean verify
+```
+
+Este perfil solo lee: comprueba acceso, metadata y el changeset de la versión actual. Si esa clave no está retenida, la prueba de entidades se omite explícitamente. No carga fixtures ni modifica claves o PostgreSQL.
+
 Para ejecutar las pruebas de integración con PostgreSQL, usá una base de pruebas separada y descartable:
 
 ```bash
@@ -130,3 +146,11 @@ mvn -Pkafka-integration clean verify
 ```
 
 Esta prueba consulta metadatos; no consume mensajes ni modifica offsets.
+
+Para comprobar el caso de una notificación repetida con el PostgreSQL local y el Redis reales, cargá las variables externas y ejecutá:
+
+```bash
+./mvnw -Pcatedra-live-noop verify
+```
+
+Este perfil compara ambas versiones antes de invocar el listener con una notificación de prueba para la versión ya aplicada. Si difieren, falla antes de entrar en el flujo. Comprueba que la versión y los conteos locales no cambien. No consume un registro del broker ni confirma un offset real; la confirmación se verifica con un objeto de prueba. El perfil no se ejecuta durante `./mvnw verify` normal.

@@ -139,6 +139,8 @@
 										<include>**/CatalogInitializationIT.java</include>
 										<include>**/JpaProfessionalSearchAdapterIT.java</include>
 										<include>**/JpaProfessionalDetailsAdapterIT.java</include>
+										<include>**/ApplyCatalogIncrementalVersionIT.java</include>
+										<include>**/CatalogIncrementalSynchronizationIT.java</include>
 									</includes>
 									<summaryFile>${project.build.directory}/failsafe-reports/postgres-summary.xml</summaryFile>
 								</configuration>
@@ -169,8 +171,39 @@
 								<configuration>
 									<includes>
 										<include>**/CatedraRedisConnectivityIT.java</include>
+										<include>**/CatedraRedisCatalogChangesIT.java</include>
 									</includes>
 									<summaryFile>${project.build.directory}/failsafe-reports/redis-summary.xml</summaryFile>
+								</configuration>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>redis-local-integration</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>default</id>
+								<phase>none</phase>
+							</execution>
+							<execution>
+								<id>redis-local-it</id>
+								<configuration>
+									<includes>
+										<include>**/CatedraRedisIncrementalIT.java</include>
+									</includes>
+									<summaryFile>${project.build.directory}/failsafe-reports/redis-local-summary.xml</summaryFile>
 								</configuration>
 								<goals>
 									<goal>integration-test</goal>
@@ -201,6 +234,36 @@
 										<include>**/CatedraKafkaConnectivityIT.java</include>
 									</includes>
 									<summaryFile>${project.build.directory}/failsafe-reports/kafka-summary.xml</summaryFile>
+								</configuration>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>catedra-live-noop</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>default</id>
+								<phase>none</phase>
+							</execution>
+							<execution>
+								<id>catedra-live-noop-it</id>
+								<configuration>
+									<includes>
+										<include>**/CatedraCatalogLiveNoOpIT.java</include>
+									</includes>
+									<summaryFile>${project.build.directory}/failsafe-reports/catedra-live-noop-summary.xml</summaryFile>
 								</configuration>
 								<goals>
 									<goal>integration-test</goal>

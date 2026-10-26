@@ -1,5 +1,7 @@
 package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.verification;
 
+import ar.edu.um.prog2.catalogsynctest.redis.RedisIntegrationTestApplication;
+
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.client.CatedraRedisClient;
@@ -9,14 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(
-		webEnvironment = SpringBootTest.WebEnvironment.NONE,
-		properties = {
-				"spring.autoconfigure.exclude="
-						+ "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
-						+ "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
-						+ "org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration,"
-						+ "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
-		}
+		classes = RedisIntegrationTestApplication.class,
+		webEnvironment = SpringBootTest.WebEnvironment.NONE
 )
 @ActiveProfiles("redis-integration")
 class CatedraRedisConnectivityIT {
