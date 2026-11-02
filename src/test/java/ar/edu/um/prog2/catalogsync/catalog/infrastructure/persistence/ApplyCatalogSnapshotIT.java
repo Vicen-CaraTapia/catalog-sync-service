@@ -8,6 +8,9 @@ import ar.edu.um.prog2.catalogsync.catalog.domain.model.Professional;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.ProfessionalCategory;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.WeeklySchedule;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.ApplyCatalogSnapshotUseCase;
+import ar.edu.um.prog2.catalogsync.catalog.application.exception.StaleCatalogSnapshotException;
+import ar.edu.um.prog2.catalogsync.synchronization.domain.model.CatalogIncrementalChanges;
+import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.ApplyCatalogIncrementalVersionUseCase;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.CatalogSyncStateEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalCategoryEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalEntity;
@@ -19,8 +22,13 @@ import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalTime;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +38,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Requires a dedicated PostgreSQL database because applying a complete snapshot reconciles
@@ -49,6 +59,12 @@ class ApplyCatalogSnapshotIT {
     private ApplyCatalogSnapshotUseCase applyCatalogSnapshot;
 
     @Autowired
+    private ApplyCatalogIncrementalVersionUseCase applyIncrementalVersion;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
     private ProfessionalCategoryJpaRepository categoryRepository;
 
     @Autowired
@@ -61,6 +77,7 @@ class ApplyCatalogSnapshotIT {
     private CatalogSyncStateRepository syncStateRepository;
 
     private JdbcTemplate jdbcTemplate;
+    private boolean cleanupRequired;
 
     @Autowired
     void setDataSource(DataSource dataSource) {
@@ -69,14 +86,23 @@ class ApplyCatalogSnapshotIT {
 
     @BeforeEach
     void clearCatalogBeforeTest() {
+        String database = jdbcTemplate.queryForObject("SELECT current_database()", String.class);
+        if (database == null || !database.toLowerCase(Locale.ROOT).contains("test")) {
+            throw new IllegalStateException("Snapshot integration tests require a dedicated test database");
+        }
+        cleanupRequired = true;
         dropFailureConstraint();
         clearCatalog();
     }
 
     @AfterEach
     void clearCatalogAfterTest() {
+        if (!cleanupRequired) {
+            return;
+        }
         dropFailureConstraint();
         clearCatalog();
+        cleanupRequired = false;
     }
 
     @Test
@@ -163,6 +189,120 @@ class ApplyCatalogSnapshotIT {
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         assertThat(readPersistedState()).isEqualTo(beforeFailure);
+    }
+
+    @Test
+    void olderSnapshotCannotChangeEntitiesOrAppliedVersion() {
+        var original = originalSnapshot();
+        applyCatalogSnapshot.apply(original);
+        var before = readPersistedState();
+        var stale = snapshot(FIRST_VERSION - 1,
+                List.of(category(2L, "Stale replacement", false)),
+                List.of(professional(22L, 2L, "Stale professional", false)),
+                List.of(schedule(202L, 22L, DayOfWeek.FRIDAY, false)));
+
+        assertThatThrownBy(() -> applyCatalogSnapshot.apply(stale))
+                .isInstanceOf(StaleCatalogSnapshotException.class);
+
+        assertThat(readPersistedState()).isEqualTo(before);
+    }
+
+    @Test
+    void snapshotWaitsForIncrementalCommitAndRejectsItsNowStaleVersion() throws Exception {
+        var original = originalSnapshot();
+        applyCatalogSnapshot.apply(original);
+        var updatedCategory = category(1L, "Incremental", false);
+        var changes = new CatalogIncrementalChanges(FIRST_VERSION + 1,
+                List.of(updatedCategory), List.of(), List.of());
+
+        runCompetingWriters(
+                () -> applyIncrementalVersion.apply(changes),
+                () -> applyCatalogSnapshot.apply(original), true);
+
+        assertThat(readPersistedState()).isEqualTo(persistedState(snapshot(FIRST_VERSION + 1,
+                List.of(updatedCategory), original.professionals(), original.weeklySchedules())));
+    }
+
+    @Test
+    void incrementalWriterWaitsUntilSnapshotTransactionCommits() throws Exception {
+        var original = originalSnapshot();
+        applyCatalogSnapshot.apply(original);
+        var newerSnapshot = snapshot(FIRST_VERSION + 1,
+                List.of(category(1L, "Snapshot", true)),
+                original.professionals(), original.weeklySchedules());
+        var updatedCategory = category(1L, "Incremental after snapshot", false);
+        var changes = new CatalogIncrementalChanges(FIRST_VERSION + 2,
+                List.of(updatedCategory), List.of(), List.of());
+
+        runCompetingWriters(
+                () -> applyCatalogSnapshot.apply(newerSnapshot),
+                () -> applyIncrementalVersion.apply(changes), false);
+
+        assertThat(readPersistedState()).isEqualTo(persistedState(snapshot(FIRST_VERSION + 2,
+                List.of(updatedCategory), original.professionals(), original.weeklySchedules())));
+    }
+
+    private void runCompetingWriters(Runnable first, Runnable second, boolean rejectSecond) throws Exception {
+        var lockHeld = new CountDownLatch(1);
+        var releaseCommit = new CountDownLatch(1);
+        var transaction = new TransactionTemplate(transactionManager);
+        // These are two real worker transactions, not a transaction surrounding the test.
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var holder = executor.submit(() -> transaction.executeWithoutResult(status -> {
+                first.run();
+                lockHeld.countDown();
+                await(releaseCommit);
+            }));
+            try {
+                assertThat(lockHeld.await(10, TimeUnit.SECONDS)).as("first writer reached its commit barrier").isTrue();
+                var contender = executor.submit(second);
+                awaitBlockedStateWriter();
+                releaseCommit.countDown();
+                holder.get(10, TimeUnit.SECONDS);
+                if (rejectSecond) {
+                    assertThatThrownBy(() -> contender.get(10, TimeUnit.SECONDS))
+                            .hasCauseInstanceOf(StaleCatalogSnapshotException.class);
+                } else {
+                    contender.get(10, TimeUnit.SECONDS);
+                }
+            } finally {
+                releaseCommit.countDown();
+            }
+        }
+    }
+
+    private void awaitBlockedStateWriter() throws InterruptedException {
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        boolean waiting;
+        do {
+            waiting = Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+                    SELECT EXISTS (SELECT 1 FROM pg_stat_activity
+                      WHERE datname = current_database() AND wait_event_type = 'Lock'
+                        AND query ILIKE '%catalog_sync_state%')
+                    """, Boolean.class));
+            if (!waiting) {
+                TimeUnit.MILLISECONDS.sleep(20);
+            }
+        } while (!waiting && System.nanoTime() < deadline);
+        assertThat(waiting).as("second writer waits for the catalog state lock").isTrue();
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(15, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting for the test commit barrier");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for the test commit barrier", exception);
+        }
+    }
+
+    private static CatalogSnapshot originalSnapshot() {
+        return snapshot(FIRST_VERSION,
+                List.of(category(1L, "Original", true)),
+                List.of(professional(11L, 1L, "Ana", true)),
+                List.of(schedule(101L, 11L, DayOfWeek.MONDAY, true)));
     }
 
     private void clearCatalog() {

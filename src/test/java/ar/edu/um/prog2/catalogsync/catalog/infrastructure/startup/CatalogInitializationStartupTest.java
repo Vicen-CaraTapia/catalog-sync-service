@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.InitializeCatalogUseCase;
+import ar.edu.um.prog2.catalogsync.config.CatalogSynchronizationRetryProperties;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.TransientSynchronizationFailureClassifier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.SpringApplication;
@@ -47,8 +50,15 @@ class CatalogInitializationStartupTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @Import(CatalogInitializationRunner.class)
+    @Import({CatalogInitializationRunner.class, SynchronizationRetryExecutor.class,
+            TransientSynchronizationFailureClassifier.class})
     static class FailingInitializationConfiguration {
+
+        @Bean
+        CatalogSynchronizationRetryProperties catalogSynchronizationRetryProperties() {
+            return new CatalogSynchronizationRetryProperties(3,
+                    java.time.Duration.ofSeconds(1), java.time.Duration.ofSeconds(2));
+        }
 
         @Bean
         InitializeCatalogUseCase initializeCatalogUseCase() {

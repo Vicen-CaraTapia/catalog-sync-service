@@ -8,6 +8,7 @@ import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.WeeklyScheduleJpaRepository;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.CatalogUpdateNotificationUseCase;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.listener.CatalogUpdatedListener;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.persistence.repository.ProcessedCatalogEventJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -43,6 +44,9 @@ class CatalogSyncApplicationTests {
 
 	@MockitoBean
 	private CatalogSyncStateRepository catalogSyncStateRepository;
+
+	@MockitoBean
+	private ProcessedCatalogEventJpaRepository processedCatalogEventRepository;
 
 	@Test
 	void healthIsUp(@Autowired RestTestClient restClient) {

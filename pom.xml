@@ -141,6 +141,9 @@
 										<include>**/JpaProfessionalDetailsAdapterIT.java</include>
 										<include>**/ApplyCatalogIncrementalVersionIT.java</include>
 										<include>**/CatalogIncrementalSynchronizationIT.java</include>
+									<include>**/JpaProcessedCatalogEventAdapterIT.java</include>
+									<include>**/CatalogGapRecoveryIT.java</include>
+									<include>**/CatalogReconciliationIT.java</include>
 									</includes>
 									<summaryFile>${project.build.directory}/failsafe-reports/postgres-summary.xml</summaryFile>
 								</configuration>

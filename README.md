@@ -61,8 +61,11 @@ Configurá los valores reales desde la shell, IDE, CI/CD, Docker u otro entorno 
 | `CATEDRA_KAFKA_BOOTSTRAP_SERVERS` | Direcciones iniciales de los brokers Kafka de la cátedra. |
 | `CATEDRA_KAFKA_CONSUMER_GROUP_ID` | Identificador del grupo consumidor de Catálogo. |
 | `CATEDRA_KAFKA_CATALOG_TOPIC` | Topic de Kafka con notificaciones de actualización del catálogo. |
+| `CATALOG_SYNC_RETRY_MAX_ATTEMPTS` | Máximo de ejecuciones completas por entrada, entre 1 y 3; por defecto `3`. |
+| `CATALOG_SYNC_RETRY_FIRST_BACKOFF` | Espera antes del segundo intento, positiva y de hasta `1s`; por defecto `1s`. |
+| `CATALOG_SYNC_RETRY_SECOND_BACKOFF` | Espera antes del tercer intento, no menor que la primera y de hasta `2s`; por defecto `2s`. |
 
-El servicio obtiene el snapshot de la cátedra para inicializar una base local sin versión aplicada. La sincronización incremental mediante eventos Kafka y datos Redis todavía no está implementada.
+El servicio obtiene el snapshot de la cátedra para inicializar una base local sin versión aplicada. La sincronización incremental usa notificaciones Kafka, cambios y entidades vigentes de Redis, y persistencia local versionada. Al arrancar, el servicio también reconcilia la versión local con Redis antes de habilitar el listener.
 
 No versionar secretos ni archivos locales como `.env` o `application-local.*`.
 
@@ -153,4 +156,98 @@ Para comprobar el caso de una notificación repetida con el PostgreSQL local y e
 ./mvnw -Pcatedra-live-noop verify
 ```
 
-Este perfil compara ambas versiones antes de invocar el listener con una notificación de prueba para la versión ya aplicada. Si difieren, falla antes de entrar en el flujo. Comprueba que la versión y los conteos locales no cambien. No consume un registro del broker ni confirma un offset real; la confirmación se verifica con un objeto de prueba. El perfil no se ejecuta durante `./mvnw verify` normal.
+Este perfil compara ambas versiones antes de invocar el listener con una notificación de prueba para la versión ya aplicada. Si difieren, falla antes de entrar en el flujo. Comprueba que la versión y los conteos locales no cambien. El puerto de eventos procesados se simula y los casos de uso de aplicación incremental y recuperación se reemplazan por objetos de prueba que fallan si se invocan, incluso si Redis avanza durante el diagnóstico. No verifica idempotencia durable. No consume un registro del broker ni confirma un offset real; la confirmación se verifica con un objeto de prueba. El perfil no se ejecuta durante `./mvnw verify` normal.
+
+### Recuperación ante brechas de versiones (C6.2)
+
+La sincronización utiliza el snapshot REST cuando la versión local es menor que
+`oldestAvailableVersion`, falta un changeset necesario o Redis está adelantado respecto
+de la notificación. También recupera si Redis avanza durante el recorrido incremental.
+Los fallos técnicos y los datos inválidos se propagan; no se interpretan como historial ausente.
+
+El snapshot debe cubrir como mínimo la versión requerida. Se guarda su versión real,
+incluso si supera la notificada por Kafka. La aplicación bloquea la fila de estado antes
+de modificar entidades y rechaza snapshots inferiores a una versión local ya confirmada.
+Cada versión incremental conserva su transacción propia; si una etapa posterior falla,
+los incrementos ya confirmados permanecen aplicados. Las comprobaciones Redis no
+constituyen una lectura atómica ni convierten sus hashes actuales en estados históricos.
+
+C6.2 conecta `ProcessedCatalogEventPort`, cuya persistencia se incorporó en C6.1.
+Un evento conocido con igual versión termina sin repetir la sincronización; una versión
+conflictiva se rechaza. Un evento nuevo se registra únicamente después del éxito y
+Kafka se confirma después del commit de ese registro. Se registra la versión del evento,
+aunque el snapshot haya aplicado una superior. La consulta inicial no reserva la ejecución:
+dos consumidores pueden intentar procesar antes del registro. La clave primaria garantiza
+unicidad del registro; un conflicto concurrente de versiones puede detectarse después de
+otros commits del catálogo, que no se revierten por ese conflicto.
+
+`CatalogGapRecoveryIT`, dentro de `postgres-integration`, usa PostgreSQL de pruebas,
+el cliente REST real con HTTP local controlado y un puerto Redis simulado. No consulta
+la infraestructura real de la cátedra. Los reintentos automáticos corresponden a C6.4.
+
+### Reconciliación al arrancar (C6.3)
+
+El arranque ejecuta `CatalogInitializationRunner` (`@Order(0)`) y después
+`CatalogReconciliationRunner` (`@Order(1)`). Si ya existe una versión local, la
+inicialización conserva el catálogo y omite su descarga inicial. La reconciliación
+compara esa versión con metadata Redis válida: si coinciden no escribe; si hay atraso,
+reutiliza `CatalogVersionSynchronizationService` para aplicar incrementos o recuperar
+mediante snapshot. No genera ni registra identificadores ficticios de eventos Kafka.
+
+Una versión local adelantada respecto de la observada en Redis se conserva y genera
+una advertencia fija. La diferencia puede corresponder a una observación atrasada de
+Redis, especialmente después de aplicar un snapshot más nuevo; no implica por sí sola
+una inconsistencia confirmada ni provoca una descarga para reducir la versión local.
+
+Ambos runners deben terminar antes de `ApplicationReadyEvent`. El listener mantiene
+`autoStartup=false` en su anotación y en la fábrica; `CatedraCatalogListenerStarter`
+inicia explícitamente su contenedor después de ese evento. El orden de los runners por
+sí solo no controla Kafka. Si la reconciliación falla, el arranque aborta con un mensaje
+fijo sin causa sensible y no llega al inicio del consumidor. Los commits incrementales
+anteriores a un fallo posterior permanecen aplicados, como en C6.2.
+
+`catalog.reconciliation.enabled` está habilitado por defecto y se desactiva en
+`application-test.yml`; las pruebas de arranque lo habilitan explícitamente cuando
+corresponde. El perfil PostgreSQL verifica reconciliación y reinicios con transacciones
+reales. Las pruebas de ciclo de vida usan un registry Kafka real con contenedor
+controlado, sin conectarse a un broker.
+
+Esta comprobación ocurre al arrancar. No existe un scheduler: una notificación perdida
+mientras el servicio permanece encendido indefinidamente no se detecta proactivamente
+sin otro disparador. Las lecturas Redis continúan siendo observaciones independientes,
+no un snapshot atómico del catálogo remoto.
+
+### Reintentos acotados de sincronización (C6.4)
+
+`SynchronizationRetryExecutor` envuelve cada invocación completa de inicialización,
+reconciliación o procesamiento de una notificación Kafka. Cada intento vuelve a entrar al
+caso de uso, que relee el estado durable. Se usan como máximo tres ejecuciones; los backoffs predeterminados son `1s` y `2s`.
+Se pueden reducir los intentos y las esperas mediante las variables `CATALOG_SYNC_RETRY_*`
+anteriores, sujetas a validación al iniciar la configuración.
+
+Solo se repiten fallos transitorios reconocidos por tipo: indisponibilidad de red/timeout,
+y respuestas REST HTTP 502, 503 o 504. Errores de autenticación, autorización, contrato,
+datos, integridad, conflictos de `eventId` o inconsistencias de versión no se reintentan.
+La clasificación no inspecciona mensajes de excepción ni detalles HTTP. Los logs del
+ejecutor usan únicamente una operación fija, número de intento y duración; no imprimen
+excepciones, cuerpos ni credenciales.
+
+En el listener, la decodificación y validación de la clave ocurren antes del reintento.
+Cada intento repite el caso de uso completo, incluida la consulta de idempotencia C6.1;
+el offset se confirma una sola vez y fuera del ejecutor, únicamente tras el éxito y el
+registro durable del evento. Si los intentos se agotan, el error se propaga al manejador
+Kafka existente, que detiene el contenedor; el mensaje no se confirma.
+
+La factoría del consumidor fija `max.poll.records=1` y `auto.offset.reset=earliest`.
+El primero limita a un registro el lote entregado por poll y el segundo solicita empezar
+desde el offset más antiguo retenido cuando no hay un offset válido. No limitan la
+duración de un procesamiento individual ni recuperan registros que Kafka ya eliminó por
+retención. Los backoffs limitan solo las esperas propias del ejecutor: las reconexiones
+internas de Kafka, Lettuce o el cliente HTTP son mecanismos separados. Por eso el tiempo
+total no tiene un límite garantizado y puede superar `max.poll.interval.ms`; esta
+configuración reduce el tamaño del lote, pero no elimina ese riesgo.
+
+Si la inicialización o reconciliación de arranque agota sus intentos, el proceso falla
+antes de que `ApplicationReadyEvent` habilite el listener. Durante la ejecución, un fallo
+Kafka agotado detiene el contenedor según la política existente; no hay un reinicio
+automático ilimitado del consumidor.
