@@ -6,10 +6,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.ReconcileCatalogStateUseCase;
+import ar.edu.um.prog2.catalogsync.config.CatalogSynchronizationRetryProperties;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.TransientSynchronizationFailureClassifier;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
 class CatalogReconciliationStartupTest {
@@ -68,7 +73,14 @@ class CatalogReconciliationStartupTest {
     }
 
     @TestConfiguration(proxyBeanMethods = false)
-    @Import(CatalogReconciliationRunner.class)
+    @Import({CatalogReconciliationRunner.class, SynchronizationRetryExecutor.class,
+            TransientSynchronizationFailureClassifier.class})
     static class RunnerConfiguration {
+
+        @Bean
+        CatalogSynchronizationRetryProperties catalogSynchronizationRetryProperties() {
+            return new CatalogSynchronizationRetryProperties(3,
+                    Duration.ofSeconds(1), Duration.ofSeconds(2));
+        }
     }
 }

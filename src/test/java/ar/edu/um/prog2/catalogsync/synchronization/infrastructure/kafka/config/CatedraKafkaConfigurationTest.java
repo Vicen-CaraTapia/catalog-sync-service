@@ -32,6 +32,8 @@ class CatedraKafkaConfigurationTest {
 				.containsEntry(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
 				.containsEntry(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
 				.containsEntry(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
-				.containsEntry(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
+				.containsEntry(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false)
+				.containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+				.containsEntry(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 	}
 }

@@ -61,8 +61,11 @@ Configurá los valores reales desde la shell, IDE, CI/CD, Docker u otro entorno 
 | `CATEDRA_KAFKA_BOOTSTRAP_SERVERS` | Direcciones iniciales de los brokers Kafka de la cátedra. |
 | `CATEDRA_KAFKA_CONSUMER_GROUP_ID` | Identificador del grupo consumidor de Catálogo. |
 | `CATEDRA_KAFKA_CATALOG_TOPIC` | Topic de Kafka con notificaciones de actualización del catálogo. |
+| `CATALOG_SYNC_RETRY_MAX_ATTEMPTS` | Máximo de ejecuciones completas por entrada, entre 1 y 3; por defecto `3`. |
+| `CATALOG_SYNC_RETRY_FIRST_BACKOFF` | Espera antes del segundo intento, positiva y de hasta `1s`; por defecto `1s`. |
+| `CATALOG_SYNC_RETRY_SECOND_BACKOFF` | Espera antes del tercer intento, no menor que la primera y de hasta `2s`; por defecto `2s`. |
 
-El servicio obtiene el snapshot de la cátedra para inicializar una base local sin versión aplicada. La sincronización incremental mediante eventos Kafka y datos Redis todavía no está implementada.
+El servicio obtiene el snapshot de la cátedra para inicializar una base local sin versión aplicada. La sincronización incremental usa notificaciones Kafka, cambios y entidades vigentes de Redis, y persistencia local versionada. Al arrancar, el servicio también reconcilia la versión local con Redis antes de habilitar el listener.
 
 No versionar secretos ni archivos locales como `.env` o `application-local.*`.
 
@@ -180,8 +183,7 @@ otros commits del catálogo, que no se revierten por ese conflicto.
 
 `CatalogGapRecoveryIT`, dentro de `postgres-integration`, usa PostgreSQL de pruebas,
 el cliente REST real con HTTP local controlado y un puerto Redis simulado. No consulta
-la infraestructura real de la cátedra. Los reintentos automáticos y la reconciliación
-de arranque quedan fuera de C6.2.
+la infraestructura real de la cátedra. Los reintentos automáticos corresponden a C6.4.
 
 ### Reconciliación al arrancar (C6.3)
 
@@ -212,6 +214,40 @@ controlado, sin conectarse a un broker.
 
 Esta comprobación ocurre al arrancar. No existe un scheduler: una notificación perdida
 mientras el servicio permanece encendido indefinidamente no se detecta proactivamente
-sin otro disparador. C6.3 tampoco añade reintentos automáticos; su política corresponde
-a C6.4. Las lecturas Redis continúan siendo observaciones independientes, no un snapshot
-atómico del catálogo remoto.
+sin otro disparador. Las lecturas Redis continúan siendo observaciones independientes,
+no un snapshot atómico del catálogo remoto.
+
+### Reintentos acotados de sincronización (C6.4)
+
+`SynchronizationRetryExecutor` envuelve cada invocación completa de inicialización,
+reconciliación o procesamiento de una notificación Kafka. Cada intento vuelve a entrar al
+caso de uso, que relee el estado durable. Se usan como máximo tres ejecuciones; los backoffs predeterminados son `1s` y `2s`.
+Se pueden reducir los intentos y las esperas mediante las variables `CATALOG_SYNC_RETRY_*`
+anteriores, sujetas a validación al iniciar la configuración.
+
+Solo se repiten fallos transitorios reconocidos por tipo: indisponibilidad de red/timeout,
+y respuestas REST HTTP 502, 503 o 504. Errores de autenticación, autorización, contrato,
+datos, integridad, conflictos de `eventId` o inconsistencias de versión no se reintentan.
+La clasificación no inspecciona mensajes de excepción ni detalles HTTP. Los logs del
+ejecutor usan únicamente una operación fija, número de intento y duración; no imprimen
+excepciones, cuerpos ni credenciales.
+
+En el listener, la decodificación y validación de la clave ocurren antes del reintento.
+Cada intento repite el caso de uso completo, incluida la consulta de idempotencia C6.1;
+el offset se confirma una sola vez y fuera del ejecutor, únicamente tras el éxito y el
+registro durable del evento. Si los intentos se agotan, el error se propaga al manejador
+Kafka existente, que detiene el contenedor; el mensaje no se confirma.
+
+La factoría del consumidor fija `max.poll.records=1` y `auto.offset.reset=earliest`.
+El primero limita a un registro el lote entregado por poll y el segundo solicita empezar
+desde el offset más antiguo retenido cuando no hay un offset válido. No limitan la
+duración de un procesamiento individual ni recuperan registros que Kafka ya eliminó por
+retención. Los backoffs limitan solo las esperas propias del ejecutor: las reconexiones
+internas de Kafka, Lettuce o el cliente HTTP son mecanismos separados. Por eso el tiempo
+total no tiene un límite garantizado y puede superar `max.poll.interval.ms`; esta
+configuración reduce el tamaño del lote, pero no elimina ese riesgo.
+
+Si la inicialización o reconciliación de arranque agota sus intentos, el proceso falla
+antes de que `ApplicationReadyEvent` habilite el listener. Durante la ejecución, un fallo
+Kafka agotado detiene el contenedor según la política existente; no hay un reinicio
+automático ilimitado del consumidor.

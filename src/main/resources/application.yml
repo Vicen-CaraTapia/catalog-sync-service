@@ -1,6 +1,13 @@
 server:
   port: ${SERVER_PORT:8081}
 
+catalog:
+  synchronization:
+    retry:
+      max-attempts: ${CATALOG_SYNC_RETRY_MAX_ATTEMPTS:3}
+      first-backoff: ${CATALOG_SYNC_RETRY_FIRST_BACKOFF:1s}
+      second-backoff: ${CATALOG_SYNC_RETRY_SECOND_BACKOFF:2s}
+
 catedra:
   group-id: ${CATEDRA_GROUP_ID:}
   technical-jwt: ${CATEDRA_TECHNICAL_JWT:}

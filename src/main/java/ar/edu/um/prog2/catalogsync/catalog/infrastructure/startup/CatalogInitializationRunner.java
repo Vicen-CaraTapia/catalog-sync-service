@@ -1,6 +1,8 @@
 package ar.edu.um.prog2.catalogsync.catalog.infrastructure.startup;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.InitializeCatalogUseCase;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor.Operation;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,15 +27,20 @@ public final class CatalogInitializationRunner implements ApplicationRunner {
             "Initial catalog synchronization failed; application startup aborted.";
 
     private final InitializeCatalogUseCase initializeCatalogUseCase;
+    private final SynchronizationRetryExecutor retryExecutor;
 
-    public CatalogInitializationRunner(InitializeCatalogUseCase initializeCatalogUseCase) {
+    public CatalogInitializationRunner(
+            InitializeCatalogUseCase initializeCatalogUseCase,
+            SynchronizationRetryExecutor retryExecutor
+    ) {
         this.initializeCatalogUseCase = Objects.requireNonNull(initializeCatalogUseCase);
+        this.retryExecutor = Objects.requireNonNull(retryExecutor);
     }
 
     @Override
     public void run(ApplicationArguments args) {
         try {
-            initializeCatalogUseCase.initializeIfNeeded();
+            retryExecutor.execute(Operation.INITIALIZATION, initializeCatalogUseCase::initializeIfNeeded);
         }
         catch (RuntimeException exception) {
             LOG.error(FAILURE_MESSAGE);
