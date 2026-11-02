@@ -25,6 +25,8 @@ public class CatedraKafkaConfiguration {
 		config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 		config.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
+		config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
+		config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 		return new DefaultKafkaConsumerFactory<>(config);
 	}

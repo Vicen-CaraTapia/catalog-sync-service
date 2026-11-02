@@ -67,6 +67,8 @@ class CatalogReconciliationIT {
     @Autowired
     private ReconcileCatalogStateUseCase reconcileCatalog;
     @Autowired
+    private ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor retryExecutor;
+    @Autowired
     private ApplyCatalogSnapshotUseCase applySnapshot;
     @Autowired
     private InitializeCatalogUseCase initializeCatalog;
@@ -283,6 +285,7 @@ class CatalogReconciliationIT {
         application.setAdditionalProfiles("test");
         application.addInitializers(context -> {
             context.getBeanFactory().registerSingleton("initializeCatalogUseCase", initializeCatalog);
+            context.getBeanFactory().registerSingleton("synchronizationRetryExecutor", retryExecutor);
             context.getBeanFactory().registerSingleton("reconcileCatalogStateUseCase", reconcileCatalog);
             context.getBeanFactory().registerSingleton("readAppliedCatalogVersionPort", appliedVersionPort);
             context.getBeanFactory().registerSingleton("kafkaListenerEndpointRegistry", registry);

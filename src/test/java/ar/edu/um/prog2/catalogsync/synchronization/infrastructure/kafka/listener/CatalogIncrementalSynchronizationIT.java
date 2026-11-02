@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
@@ -16,6 +17,9 @@ import ar.edu.um.prog2.catalogsync.synchronization.domain.model.CatalogIncrement
 import ar.edu.um.prog2.catalogsync.synchronization.domain.model.CatalogSyncMetadata;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadCatalogIncrementalChangesPort;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.RecoverCatalogFromSnapshotUseCase;
+import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ProcessedCatalogEventPort;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.exception.CatedraRedisUnavailableException;
+import java.net.SocketTimeoutException;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalTime;
@@ -34,9 +38,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /** Exercises listener-to-database behavior without a Kafka broker or cátedra Redis. */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
+        "catalog.synchronization.retry.first-backoff=1ms",
+        "catalog.synchronization.retry.second-backoff=2ms"
+})
 @ActiveProfiles("test")
 class CatalogIncrementalSynchronizationIT {
 
@@ -55,6 +63,9 @@ class CatalogIncrementalSynchronizationIT {
 
     @MockitoBean
     private RecoverCatalogFromSnapshotUseCase recoverSnapshot;
+
+    @MockitoSpyBean
+    private ProcessedCatalogEventPort processedEvents;
 
     private final Acknowledgment acknowledgment = mock(Acknowledgment.class);
 
@@ -155,6 +166,38 @@ class CatalogIncrementalSynchronizationIT {
         verify(changesPort, never()).readChanges(7);
         verify(acknowledgment, never()).acknowledge();
         assertThat(processedVersion()).isNull();
+    }
+
+    @Test
+    void retriesFromTheNewDurableVersionAfterAnEarlierIncrementCommitted() {
+        when(changesPort.readMetadata()).thenReturn(metadata(7), metadata(7), metadata(7));
+        when(changesPort.readChanges(5)).thenReturn(Optional.of(changes(5,
+                List.of(category("Committed before transient failure", false)), List.of(), List.of())));
+        when(changesPort.readChanges(6))
+                .thenThrow(new CatedraRedisUnavailableException(new SocketTimeoutException("private marker")))
+                .thenReturn(Optional.of(changes(6,
+                        List.of(), List.of(professional(CATEGORY_ID, "Recovered", true)), List.of())));
+        when(changesPort.readChanges(7)).thenReturn(Optional.of(changes(7,
+                List.of(), List.of(), List.of(schedule(false)))));
+        doAnswer(invocation -> {
+            assertThat(appliedVersion()).isEqualTo(7L);
+            assertThat(processedVersion()).isEqualTo(7L);
+            return null;
+        }).when(acknowledgment).acknowledge();
+
+        listener.onMessage(record(7), acknowledgment);
+
+        assertThat(appliedVersion()).isEqualTo(7L);
+        assertThat(jdbc.queryForObject("SELECT name FROM professional_categories WHERE id = ?",
+                String.class, CATEGORY_ID)).isEqualTo("Committed before transient failure");
+        assertThat(jdbc.queryForObject("SELECT first_name FROM professionals WHERE id = ?",
+                String.class, PROFESSIONAL_ID)).isEqualTo("Recovered");
+        assertThat(processedVersion()).isEqualTo(7L);
+        verify(changesPort).readChanges(5);
+        verify(changesPort, times(2)).readChanges(6);
+        verify(changesPort).readChanges(7);
+        verify(processedEvents, times(2)).findProcessedVersion("catalog-event-7-4f3b");
+        verify(acknowledgment).acknowledge();
     }
 
     @Test

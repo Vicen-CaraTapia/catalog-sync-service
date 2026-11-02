@@ -3,6 +3,8 @@ package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.listene
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.CatalogUpdateNotificationUseCase;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.decoder.CatalogUpdatedEventDecoder;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.exception.InvalidCatalogUpdatedEventException;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor.Operation;
 import java.util.Objects;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -17,13 +19,16 @@ public final class CatalogUpdatedListener {
 
 	private final CatalogUpdatedEventDecoder decoder;
 	private final CatalogUpdateNotificationUseCase useCase;
+	private final SynchronizationRetryExecutor retryExecutor;
 
 	public CatalogUpdatedListener(
 			ObjectMapper objectMapper,
-			CatalogUpdateNotificationUseCase useCase
+			CatalogUpdateNotificationUseCase useCase,
+			SynchronizationRetryExecutor retryExecutor
 	) {
 		this.decoder = new CatalogUpdatedEventDecoder(objectMapper);
 		this.useCase = Objects.requireNonNull(useCase);
+		this.retryExecutor = Objects.requireNonNull(retryExecutor);
 	}
 
 	@KafkaListener(
@@ -42,7 +47,8 @@ public final class CatalogUpdatedListener {
 			throw new InvalidCatalogUpdatedEventException();
 		}
 
-		useCase.onCatalogUpdated(event.eventId(), event.newVersion());
+		retryExecutor.execute(Operation.CATALOG_NOTIFICATION,
+				() -> useCase.onCatalogUpdated(event.eventId(), event.newVersion()));
 		acknowledgment.acknowledge();
 	}
 }

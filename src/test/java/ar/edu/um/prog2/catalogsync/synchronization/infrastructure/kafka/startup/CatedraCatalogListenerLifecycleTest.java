@@ -8,16 +8,23 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.InitializeCatalogUseCase;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.startup.CatalogInitializationRunner;
+import ar.edu.um.prog2.catalogsync.config.CatalogSynchronizationRetryProperties;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.ReconcileCatalogStateUseCase;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadAppliedCatalogVersionPort;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.listener.CatalogUpdatedListener;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.exception.CatedraRedisUnavailableException;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.SynchronizationRetryExecutor;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.retry.TransientSynchronizationFailureClassifier;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.startup.CatalogReconciliationRunner;
+import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -78,6 +85,21 @@ class CatedraCatalogListenerLifecycleTest {
     }
 
     @Test
+    void transientInitializationExhaustionPreventsKafkaStartup(CapturedOutput output) {
+        var fixture = new Fixture();
+        doThrow(new CatedraRedisUnavailableException(new SocketTimeoutException("private marker")))
+                .when(fixture.initialize).initializeIfNeeded();
+
+        assertThatThrownBy(() -> startup(fixture))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Initial catalog synchronization failed; application startup aborted.");
+
+        verify(fixture.initialize, times(3)).initializeIfNeeded();
+        verify(fixture.container, never()).start();
+        assertThat(output.getAll()).doesNotContain("private marker");
+    }
+
+    @Test
     void reconciliationFailureAbortsStartupWithoutStartingKafkaOrLoggingTheCause(CapturedOutput output) {
         var fixture = new Fixture();
         doThrow(new IllegalStateException("secret-marker-must-not-be-logged"))
@@ -130,8 +152,15 @@ class CatedraCatalogListenerLifecycleTest {
 
     @TestConfiguration(proxyBeanMethods = false)
     // Reverse registration order deliberately: @Order, rather than bean registration, orders the runners.
-    @Import({CatalogReconciliationRunner.class, CatedraCatalogListenerStarter.class, CatalogInitializationRunner.class})
+    @Import({CatalogReconciliationRunner.class, CatedraCatalogListenerStarter.class, CatalogInitializationRunner.class,
+            SynchronizationRetryExecutor.class, TransientSynchronizationFailureClassifier.class})
     static class TestApplication {
+
+        @Bean
+        CatalogSynchronizationRetryProperties catalogSynchronizationRetryProperties() {
+            return new CatalogSynchronizationRetryProperties(3, Duration.ofMillis(1), Duration.ofMillis(2));
+        }
+
         @Bean
         KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry(Fixture fixture) {
             var registry = new KafkaListenerEndpointRegistry();
