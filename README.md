@@ -153,4 +153,32 @@ Para comprobar el caso de una notificación repetida con el PostgreSQL local y e
 ./mvnw -Pcatedra-live-noop verify
 ```
 
-Este perfil compara ambas versiones antes de invocar el listener con una notificación de prueba para la versión ya aplicada. Si difieren, falla antes de entrar en el flujo. Comprueba que la versión y los conteos locales no cambien. No consume un registro del broker ni confirma un offset real; la confirmación se verifica con un objeto de prueba. El perfil no se ejecuta durante `./mvnw verify` normal.
+Este perfil compara ambas versiones antes de invocar el listener con una notificación de prueba para la versión ya aplicada. Si difieren, falla antes de entrar en el flujo. Comprueba que la versión y los conteos locales no cambien. El puerto de eventos procesados se simula y los casos de uso de aplicación incremental y recuperación se reemplazan por objetos de prueba que fallan si se invocan, incluso si Redis avanza durante el diagnóstico. No verifica idempotencia durable. No consume un registro del broker ni confirma un offset real; la confirmación se verifica con un objeto de prueba. El perfil no se ejecuta durante `./mvnw verify` normal.
+
+### Recuperación ante brechas de versiones (C6.2)
+
+La sincronización utiliza el snapshot REST cuando la versión local es menor que
+`oldestAvailableVersion`, falta un changeset necesario o Redis está adelantado respecto
+de la notificación. También recupera si Redis avanza durante el recorrido incremental.
+Los fallos técnicos y los datos inválidos se propagan; no se interpretan como historial ausente.
+
+El snapshot debe cubrir como mínimo la versión requerida. Se guarda su versión real,
+incluso si supera la notificada por Kafka. La aplicación bloquea la fila de estado antes
+de modificar entidades y rechaza snapshots inferiores a una versión local ya confirmada.
+Cada versión incremental conserva su transacción propia; si una etapa posterior falla,
+los incrementos ya confirmados permanecen aplicados. Las comprobaciones Redis no
+constituyen una lectura atómica ni convierten sus hashes actuales en estados históricos.
+
+C6.2 conecta `ProcessedCatalogEventPort`, cuya persistencia se incorporó en C6.1.
+Un evento conocido con igual versión termina sin repetir la sincronización; una versión
+conflictiva se rechaza. Un evento nuevo se registra únicamente después del éxito y
+Kafka se confirma después del commit de ese registro. Se registra la versión del evento,
+aunque el snapshot haya aplicado una superior. La consulta inicial no reserva la ejecución:
+dos consumidores pueden intentar procesar antes del registro. La clave primaria garantiza
+unicidad del registro; un conflicto concurrente de versiones puede detectarse después de
+otros commits del catálogo, que no se revierten por ese conflicto.
+
+`CatalogGapRecoveryIT`, dentro de `postgres-integration`, usa PostgreSQL de pruebas,
+el cliente REST real con HTTP local controlado y un puerto Redis simulado. No consulta
+la infraestructura real de la cátedra. Los reintentos automáticos y la reconciliación
+de arranque quedan fuera de C6.2.

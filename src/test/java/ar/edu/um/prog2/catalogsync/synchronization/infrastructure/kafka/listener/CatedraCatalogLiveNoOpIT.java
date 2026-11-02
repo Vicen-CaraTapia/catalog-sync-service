@@ -3,9 +3,17 @@ package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.listene
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadAppliedCatalogVersionPort;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadCatalogIncrementalChangesPort;
+import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ProcessedCatalogEventPort;
+import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.ApplyCatalogIncrementalVersionUseCase;
+import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.RecoverCatalogFromSnapshotUseCase;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import javax.sql.DataSource;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
@@ -27,6 +35,16 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 class CatedraCatalogLiveNoOpIT {
 
+    // Keep this optional live diagnostic read-only, including synchronization bookkeeping.
+    @MockitoBean
+    private ProcessedCatalogEventPort processedEvents;
+
+    @MockitoBean
+    private ApplyCatalogIncrementalVersionUseCase applyVersion;
+
+    @MockitoBean
+    private RecoverCatalogFromSnapshotUseCase recoverSnapshot;
+
     @Autowired
     private ReadAppliedCatalogVersionPort appliedVersionPort;
 
@@ -41,6 +59,11 @@ class CatedraCatalogLiveNoOpIT {
 
     @Test
     void repeatedNotificationReadsRealMetadataWithoutChangingTheLocalCatalog() {
+        // Reject write paths even if Redis advances after the initial version comparison.
+        doThrow(new IllegalStateException("Live read-only check cannot apply incremental changes"))
+                .when(applyVersion).apply(any());
+        doThrow(new IllegalStateException("Live read-only check cannot recover a snapshot"))
+                .when(recoverSnapshot).recover(anyLong());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         Long localVersion = appliedVersionPort.readAppliedVersion();
         long remoteVersion = changesPort.readMetadata().currentVersion();
@@ -66,6 +89,8 @@ class CatedraCatalogLiveNoOpIT {
         assertThat(appliedVersionPort.readAppliedVersion()).isEqualTo(localVersion);
         assertThat(counts(jdbc)).containsExactly(counts);
         verify(acknowledgment).acknowledge();
+        verify(processedEvents).registerProcessed("catalog-live-noop-check", remoteVersion);
+        verifyNoInteractions(applyVersion, recoverSnapshot);
     }
 
     private static long[] counts(JdbcTemplate jdbc) {
