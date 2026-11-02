@@ -1,5 +1,6 @@
 package ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.adapter;
 
+import ar.edu.um.prog2.catalogsync.catalog.application.exception.StaleCatalogSnapshotException;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.CatalogSnapshot;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.CatalogInitializationStatePort;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.CatalogSnapshotPersistencePort;
@@ -42,6 +43,15 @@ public final class JpaCatalogSnapshotPersistenceAdapter
 
     @Override
     public void apply(CatalogSnapshot snapshot) {
+        // Called inside ApplyCatalogSnapshotUseCase's transaction. Share the incremental lock.
+        CatalogSyncStateEntity lockedState = catalogSyncStateRepository
+                .findByStateId(CatalogSyncStateEntity.SINGLETON_ID)
+                .orElseThrow(() -> new IllegalStateException("catalog sync state is missing"));
+        Long appliedVersion = lockedState.getAppliedVersion();
+        if (appliedVersion != null && appliedVersion > snapshot.version()) {
+            throw new StaleCatalogSnapshotException();
+        }
+
         professionalCategoryRepository.saveAll(
                 snapshot.professionalCategories().stream()
                         .map(CatalogPersistenceMapper::toEntity)
@@ -84,7 +94,7 @@ public final class JpaCatalogSnapshotPersistenceAdapter
         ));
         professionalCategoryRepository.flush();
 
-        syncState().updateAppliedVersion(snapshot.version());
+        lockedState.updateAppliedVersion(snapshot.version());
         catalogSyncStateRepository.flush();
     }
 
