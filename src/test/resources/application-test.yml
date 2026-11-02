@@ -22,6 +22,8 @@ catedra:
 catalog:
   initialization:
     enabled: false
+  reconciliation:
+    enabled: false
   incremental-consumer:
     enabled: false
 

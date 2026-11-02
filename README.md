@@ -182,3 +182,36 @@ otros commits del catálogo, que no se revierten por ese conflicto.
 el cliente REST real con HTTP local controlado y un puerto Redis simulado. No consulta
 la infraestructura real de la cátedra. Los reintentos automáticos y la reconciliación
 de arranque quedan fuera de C6.2.
+
+### Reconciliación al arrancar (C6.3)
+
+El arranque ejecuta `CatalogInitializationRunner` (`@Order(0)`) y después
+`CatalogReconciliationRunner` (`@Order(1)`). Si ya existe una versión local, la
+inicialización conserva el catálogo y omite su descarga inicial. La reconciliación
+compara esa versión con metadata Redis válida: si coinciden no escribe; si hay atraso,
+reutiliza `CatalogVersionSynchronizationService` para aplicar incrementos o recuperar
+mediante snapshot. No genera ni registra identificadores ficticios de eventos Kafka.
+
+Una versión local adelantada respecto de la observada en Redis se conserva y genera
+una advertencia fija. La diferencia puede corresponder a una observación atrasada de
+Redis, especialmente después de aplicar un snapshot más nuevo; no implica por sí sola
+una inconsistencia confirmada ni provoca una descarga para reducir la versión local.
+
+Ambos runners deben terminar antes de `ApplicationReadyEvent`. El listener mantiene
+`autoStartup=false` en su anotación y en la fábrica; `CatedraCatalogListenerStarter`
+inicia explícitamente su contenedor después de ese evento. El orden de los runners por
+sí solo no controla Kafka. Si la reconciliación falla, el arranque aborta con un mensaje
+fijo sin causa sensible y no llega al inicio del consumidor. Los commits incrementales
+anteriores a un fallo posterior permanecen aplicados, como en C6.2.
+
+`catalog.reconciliation.enabled` está habilitado por defecto y se desactiva en
+`application-test.yml`; las pruebas de arranque lo habilitan explícitamente cuando
+corresponde. El perfil PostgreSQL verifica reconciliación y reinicios con transacciones
+reales. Las pruebas de ciclo de vida usan un registry Kafka real con contenedor
+controlado, sin conectarse a un broker.
+
+Esta comprobación ocurre al arrancar. No existe un scheduler: una notificación perdida
+mientras el servicio permanece encendido indefinidamente no se detecta proactivamente
+sin otro disparador. C6.3 tampoco añade reintentos automáticos; su política corresponde
+a C6.4. Las lecturas Redis continúan siendo observaciones independientes, no un snapshot
+atómico del catálogo remoto.

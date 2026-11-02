@@ -7,17 +7,25 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.CatalogSnapshot;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.Professional;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.ProfessionalCategory;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.WeeklySchedule;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.ApplyCatalogSnapshotUseCase;
+import ar.edu.um.prog2.catalogsync.catalog.domain.ports.in.InitializeCatalogUseCase;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.startup.CatalogInitializationRunner;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.FetchCatalogSnapshotPort;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.model.CatalogIncrementalChanges;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.model.CatalogSyncMetadata;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.ReconcileCatalogStateUseCase;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadCatalogIncrementalChangesPort;
+import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.out.ReadAppliedCatalogVersionPort;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.listener.CatalogUpdatedListener;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.kafka.startup.CatedraCatalogListenerStarter;
+import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.startup.CatalogReconciliationRunner;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.exception.CatedraRedisUnavailableException;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -29,8 +37,18 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Import;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -39,6 +57,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Real use cases, JPA adapters and commits. Invoked explicitly before adding the startup runner. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
+@ExtendWith(OutputCaptureExtension.class)
 class CatalogReconciliationIT {
 
     private static final long CATEGORY = 901;
@@ -49,6 +68,10 @@ class CatalogReconciliationIT {
     private ReconcileCatalogStateUseCase reconcileCatalog;
     @Autowired
     private ApplyCatalogSnapshotUseCase applySnapshot;
+    @Autowired
+    private InitializeCatalogUseCase initializeCatalog;
+    @Autowired
+    private ReadAppliedCatalogVersionPort appliedVersionPort;
     @Autowired
     private DataSource dataSource;
     @MockitoBean
@@ -183,6 +206,94 @@ class CatalogReconciliationIT {
         assertThat(categoryName()).isEqualTo("Newer observation");
         verify(changesPort, never()).readChanges(8);
         verify(fetchSnapshot).fetchSnapshot();
+    }
+
+    @Test
+    void startupCatchesUpBeforeKafkaStartsAndRepeatedStartupDoesNotReapplyChanges() {
+        continuousHistory();
+        var container = mock(MessageListenerContainer.class);
+        doAnswer(invocation -> {
+            assertIncrementalResult();
+            assertThat(eventCount()).isEqualTo(eventCountBefore);
+            return null;
+        }).when(container).start();
+
+        try (var firstStartup = startup(container)) {
+            assertThat(firstStartup.isActive()).isTrue();
+            assertIncrementalResult();
+        }
+        var beforeRestart = state();
+        try (var secondStartup = startup(container)) {
+            assertThat(secondStartup.isActive()).isTrue();
+            assertThat(state()).isEqualTo(beforeRestart);
+        }
+
+        verify(container, times(2)).start();
+        verify(changesPort, times(1)).readChanges(8);
+        verify(changesPort, times(1)).readChanges(9);
+        verifyNoInteractions(fetchSnapshot);
+    }
+
+    @Test
+    void startupRedisFailurePreservesCatalogAndPreventsKafkaConsumption(CapturedOutput output) {
+        var before = state();
+        var container = mock(MessageListenerContainer.class);
+        when(changesPort.readMetadata()).thenThrow(new CatedraRedisUnavailableException(
+                new IllegalStateException("secret-marker-must-not-be-logged")));
+
+        assertThatThrownBy(() -> startup(container))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Catalog state reconciliation failed; application startup aborted.");
+
+        assertThat(state()).isEqualTo(before);
+        verify(container, never()).start();
+        verifyNoInteractions(fetchSnapshot);
+        assertThat(output.getAll()).doesNotContain("secret-marker-must-not-be-logged");
+    }
+
+    @Test
+    void startupInitializesBeforeReconciliationAndPreservesSnapshotAheadOfRedis() {
+        clearCatalog();
+        when(fetchSnapshot.fetchSnapshot()).thenReturn(snapshot(10, "Initialized ahead", false));
+        when(changesPort.readMetadata()).thenReturn(metadata(9, 1));
+        var container = mock(MessageListenerContainer.class);
+        doAnswer(invocation -> {
+            assertThat(appliedVersion()).isEqualTo(10L);
+            assertThat(categoryName()).isEqualTo("Initialized ahead");
+            assertThat(eventCount()).isEqualTo(eventCountBefore);
+            return null;
+        }).when(container).start();
+
+        try (var context = startup(container)) {
+            assertThat(context.isActive()).isTrue();
+            assertThat(appliedVersion()).isEqualTo(10L);
+        }
+
+        verify(fetchSnapshot, times(1)).fetchSnapshot();
+        verify(changesPort, never()).readChanges(10);
+        verify(container).start();
+    }
+
+    private ConfigurableApplicationContext startup(MessageListenerContainer container) {
+        var registry = mock(KafkaListenerEndpointRegistry.class);
+        when(registry.getListenerContainer(CatalogUpdatedListener.LISTENER_ID)).thenReturn(container);
+        var application = new SpringApplication(StartupConfiguration.class);
+        application.setWebApplicationType(WebApplicationType.NONE);
+        application.setLogStartupInfo(false);
+        application.setAdditionalProfiles("test");
+        application.addInitializers(context -> {
+            context.getBeanFactory().registerSingleton("initializeCatalogUseCase", initializeCatalog);
+            context.getBeanFactory().registerSingleton("reconcileCatalogStateUseCase", reconcileCatalog);
+            context.getBeanFactory().registerSingleton("readAppliedCatalogVersionPort", appliedVersionPort);
+            context.getBeanFactory().registerSingleton("kafkaListenerEndpointRegistry", registry);
+        });
+        return application.run("--catalog.initialization.enabled=true", "--catalog.reconciliation.enabled=true",
+                "--catalog.incremental-consumer.enabled=true");
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    @Import({CatalogInitializationRunner.class, CatalogReconciliationRunner.class, CatedraCatalogListenerStarter.class})
+    static class StartupConfiguration {
     }
 
     private void continuousHistory() {
