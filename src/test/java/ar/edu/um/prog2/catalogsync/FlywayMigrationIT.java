@@ -15,6 +15,11 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @ActiveProfiles("test")
 class FlywayMigrationIT {
+    @org.springframework.test.context.DynamicPropertySource
+    static void internalJwtTestKey(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.register(registry);
+    }
+
 
     @Autowired
     private DataSource dataSource;

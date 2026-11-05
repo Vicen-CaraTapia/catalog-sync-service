@@ -32,6 +32,11 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @ActiveProfiles("test")
 @AutoConfigureRestTestClient
 class CatalogSyncApplicationTests {
+    @org.springframework.test.context.DynamicPropertySource
+    static void internalJwtTestKey(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.register(registry);
+    }
+
 
 	@MockitoBean
 	private ProfessionalCategoryJpaRepository professionalCategoryRepository;
@@ -59,7 +64,7 @@ class CatalogSyncApplicationTests {
 	}
 
 	@Test
-	void apiPathsAreDeniedUntilInternalJwtSecurityIsImplemented(@Autowired RestTestClient restClient) {
+	void legacyApiPathsRemainDenied(@Autowired RestTestClient restClient) {
 		restClient.get()
 				.uri("/api/professionals")
 				.exchange()
@@ -73,8 +78,43 @@ class CatalogSyncApplicationTests {
 	@Test
 	void internalProfessionalEndpointRejectsAnonymousAccess(@Autowired RestTestClient restClient) {
 		restClient.get().uri("/internal/api/professionals/10")
-				.exchange().expectStatus().isForbidden();
+				.exchange().expectStatus().isUnauthorized();
 	}
+
+    @Test
+    void validInternalTokenReachesTheRealHttpController(@Autowired RestTestClient restClient) throws Exception {
+        var token = ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.sign(
+                ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.claims());
+        restClient.get().uri("/internal/api/professionals/999")
+                .header("Authorization", "Bearer " + token).exchange()
+                .expectStatus().isNotFound().expectBody()
+                .jsonPath("$.detail").isEqualTo("Professional not found.");
+    }
+
+    @Test
+    void validTokenWithoutPermissionIsForbiddenOverHttp(@Autowired RestTestClient restClient) throws Exception {
+        var claims = ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.claims();
+        claims.remove("scope");
+        var token = ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.sign(claims);
+        restClient.get().uri("/internal/api/professionals/999")
+                .header("Authorization", "Bearer " + token).exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"abc", "1.5", "9223372036854775808"})
+    void invalidProfessionalIdReturnsBadRequestOverRealHttp(
+            String id, @Autowired RestTestClient restClient) throws Exception {
+        var token = ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.sign(
+                ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.claims());
+        restClient.get().uri("/internal/api/professionals/" + id)
+                .header("Authorization", "Bearer " + token).exchange()
+                .expectStatus().isBadRequest().expectHeader()
+                .contentTypeCompatibleWith(org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(400)
+                .jsonPath("$.detail").isEqualTo("Professional ID must be a valid 64-bit integer.");
+    }
 
 	@Test
 	void catalogUpdatedListenerIsRegisteredButInactiveWithTheOrchestrationUseCase(

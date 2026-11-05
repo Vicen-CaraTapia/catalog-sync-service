@@ -2,6 +2,11 @@ server:
   port: ${SERVER_PORT:8081}
 
 catalog:
+  security:
+    internal-jwt:
+      public-key-location: ${INTERNAL_CATALOG_JWT_PUBLIC_KEY_LOCATION:}
+      issuer: ${INTERNAL_CATALOG_JWT_ISSUER:}
+      audience: ${INTERNAL_CATALOG_JWT_AUDIENCE:}
   synchronization:
     retry:
       max-attempts: ${CATALOG_SYNC_RETRY_MAX_ATTEMPTS:3}

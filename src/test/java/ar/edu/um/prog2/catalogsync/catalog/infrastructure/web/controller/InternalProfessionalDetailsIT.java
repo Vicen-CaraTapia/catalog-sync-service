@@ -22,6 +22,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
 class InternalProfessionalDetailsIT {
+    @org.springframework.test.context.DynamicPropertySource
+    static void internalJwtTestKey(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.register(registry);
+    }
+
     @Autowired private InternalProfessionalDetailsController controller;
     @Autowired private ProfessionalDetailsExceptionHandler advice;
     @Autowired private DataSource dataSource;
