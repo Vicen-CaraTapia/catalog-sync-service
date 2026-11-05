@@ -74,7 +74,9 @@ class InternalProfessionalDetailsControllerTest {
     @ParameterizedTest
     @ValueSource(strings = {"abc", "1.5", "9223372036854775808"})
     void rejectsUnparseableIdsWithoutCallingTheUseCase(String id) throws Exception {
-        mvc.perform(get("/internal/api/professionals/{id}", id)).andExpect(status().isBadRequest());
+        mvc.perform(get("/internal/api/professionals/{id}", id)).andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value("Professional ID must be a valid 64-bit integer."));
         verifyNoInteractions(useCase);
     }
 

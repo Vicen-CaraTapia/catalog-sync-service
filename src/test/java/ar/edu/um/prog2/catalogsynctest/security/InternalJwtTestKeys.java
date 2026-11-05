@@ -35,6 +35,25 @@ public final class InternalJwtTestKeys {
         }
     }
 
+    public static java.util.Map<String, Object> claims() {
+        var claims = new java.util.HashMap<String, Object>();
+        claims.put("iss", "appointment-reservation-service");
+        claims.put("sub", "appointment-reservation-service");
+        claims.put("aud", java.util.List.of("catalog-sync-service"));
+        claims.put("exp", java.time.Instant.now().plusSeconds(600).getEpochSecond());
+        claims.put("scope", "catalog:read");
+        return claims;
+    }
+
+    public static String sign(java.util.Map<String, Object> claims) throws Exception {
+        var jwt = new com.nimbusds.jose.JWSObject(
+                new com.nimbusds.jose.JWSHeader(com.nimbusds.jose.JWSAlgorithm.RS256),
+                new com.nimbusds.jose.Payload(claims));
+        jwt.sign(new com.nimbusds.jose.crypto.RSASSASigner(
+                (java.security.interfaces.RSAPrivateKey) KEY_PAIR.getPrivate()));
+        return jwt.serialize();
+    }
+
     public static void register(DynamicPropertyRegistry registry) {
         registry.add("catalog.security.internal-jwt.public-key-location", () -> PUBLIC_KEY_LOCATION);
         registry.add("catalog.security.internal-jwt.issuer", () -> "appointment-reservation-service");

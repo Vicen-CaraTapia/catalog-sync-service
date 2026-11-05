@@ -85,7 +85,7 @@ La respuesta debe incluir:
 
 ## Consultas locales del catálogo
 
-Las consultas de esta sección leen la réplica local de PostgreSQL. No consultan la API de la cátedra, Redis, Kafka ni las ocupaciones de turnos. Actualmente la configuración de seguridad solo permite el acceso anónimo a `/actuator/health`: las solicitudes HTTP a `/api/professionals` y `/api/professionals/{id}` reciben `403` hasta que se implemente la autenticación interna de C7.
+Las consultas de esta sección leen la réplica local de PostgreSQL. No consultan la API de la cátedra, Redis, Kafka ni las ocupaciones de turnos. Solo `GET /actuator/health` permite acceso anónimo. Las rutas C4 `/api/professionals` y `/api/professionals/{id}` permanecen denegadas con `403`; el acceso autenticado para Appointment se realiza mediante la ruta interna documentada abajo.
 
 ### Búsqueda de profesionales
 
@@ -126,14 +126,15 @@ deshabilitados. Incluye horarios habilitados y deshabilitados; sin horarios devu
 puede convertirse a `long` produce `400`; no se exige positividad no documentada.
 Estas reglas semanales no garantizan slots libres ni consultan ocupaciones.
 
-Durante C7.1 la cadena de seguridad de producción sigue denegando el acceso anónimo
-con `403`, antes de llegar al controlador. C7.2 incorporará autenticación y autorización
-con JWT técnico interno, separado del JWT de cátedra y del JWT de usuario final.
-Las pruebas MVC aisladas verifican el contrato funcional; la prueba HTTP con la cadena
-real verifica el rechazo anónimo. El IT PostgreSQL usa una base descartable y no
+La ruta requiere un JWT técnico interno válido y el permiso exacto `catalog:read`.
+Sin Bearer o con un token inválido devuelve `401`; un token autenticado sin permiso
+devuelve `403`. Un token autorizado llega al controlador y sus respuestas funcionales.
+Esta identidad está separada del JWT de cátedra y del JWT de usuario final.
+Las pruebas MVC aisladas verifican el contrato funcional; las pruebas con las cadenas
+reales verifican autenticación, autorización y rechazo anónimo. El IT PostgreSQL usa una base descartable y no
 requiere REST, Redis ni Kafka reales.
 
-## Base de validación JWT interna (C7.2, paso 1)
+## Autenticación y autorización JWT interna (C7.2)
 
 Catalog incorpora Spring Security OAuth2 Resource Server y `NimbusJwtDecoder`, con
 verificación exclusiva RS256. Appointment deberá conservar la clave privada; Catalog
@@ -171,10 +172,30 @@ un PEM público temporal; no se versiona material criptográfico.
 | `catalog.security.internal-jwt.issuer` | `INTERNAL_CATALOG_JWT_ISSUER` |
 | `catalog.security.internal-jwt.audience` | `INTERNAL_CATALOG_JWT_AUDIENCE` |
 
-Este paso prepara el decoder, pero **todavía no lo conecta a las cadenas HTTP**.
-La política actual sigue denegando las consultas internas con `403`. La exigencia del
-Bearer, autorización `catalog:read` y respuestas sanitizadas `401`/`403` se integrarán
-en el paso 2; aún no se puede acceder al endpoint presentando el token.
+Se aplican dos cadenas de seguridad ordenadas:
+
+1. `/internal/api/**`: exige Bearer JWT. Solo `GET /internal/api/professionals/{id}`
+   permite acceso con la autoridad exacta `SCOPE_catalog:read`; el resto de operaciones
+   internas queda denegado. El convertidor usa exclusivamente el claim `scope`, sin
+   aceptar `scp` como sustituto y sin coincidencias por subcadena.
+2. Resto de rutas: solo `GET /actuator/health` es público; las demás siguen denegadas.
+   Un token interno tampoco abre las rutas C4 `/api/professionals`.
+
+La cadena interna es stateless: no crea sesiones ni usa autenticación guardada en ellas.
+No admite formulario ni HTTP Basic. CSRF se deshabilita únicamente en esa cadena, que
+se autentica con el header Authorization y no con cookies. La cadena restante conserva
+su protección existente.
+
+Los fallos internos se devuelven como `application/problem+json`, con mensajes fijos:
+`401` para autenticación ausente/inválida y `403` para acceso denegado a un token válido.
+La respuesta incluye un desafío `WWW-Authenticate: Bearer` en `401`; el `403` incluye
+`Bearer error="insufficient_scope"`. No copia el token, claims, cuerpos, mensajes del
+decoder ni causas de excepción. Un JWT válido permite conservar los resultados C7.1:
+`200` con datos, `404` para profesional inexistente y `400` para IDs mal formados.
+
+Las pruebas firman tokens con claves efímeras y recorren las cadenas de producción;
+no simulan una autenticación exitosa ni desactivan filtros. También verifican llamadas
+HTTP reales para autenticación válida, permiso ausente y rechazo anónimo.
 
 ## Verificación
 
