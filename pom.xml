@@ -139,6 +139,7 @@
 										<include>**/CatalogInitializationIT.java</include>
 										<include>**/JpaProfessionalSearchAdapterIT.java</include>
 										<include>**/JpaProfessionalDetailsAdapterIT.java</include>
+										<include>**/InternalProfessionalDetailsIT.java</include>
 										<include>**/ApplyCatalogIncrementalVersionIT.java</include>
 										<include>**/CatalogIncrementalSynchronizationIT.java</include>
 									<include>**/JpaProcessedCatalogEventAdapterIT.java</include>

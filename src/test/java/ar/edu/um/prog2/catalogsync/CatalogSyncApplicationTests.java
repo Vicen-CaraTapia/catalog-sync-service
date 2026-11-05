@@ -71,6 +71,12 @@ class CatalogSyncApplicationTests {
 	}
 
 	@Test
+	void internalProfessionalEndpointRejectsAnonymousAccess(@Autowired RestTestClient restClient) {
+		restClient.get().uri("/internal/api/professionals/10")
+				.exchange().expectStatus().isForbidden();
+	}
+
+	@Test
 	void catalogUpdatedListenerIsRegisteredButInactiveWithTheOrchestrationUseCase(
 			@Autowired ApplicationContext context,
 			@Autowired KafkaListenerEndpointRegistry registry
