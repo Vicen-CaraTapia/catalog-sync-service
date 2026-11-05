@@ -5,4 +5,255 @@
 <!-- calidad:fin -->
 
 # catalog-sync-service
-Servicio SB para catálogo de profesionales, horarios y sincronización con cátedra
+
+Backend Spring Boot que mantiene una réplica local del catálogo y expone consultas de profesionales.
+
+## Requisitos
+
+- Java 25
+- Maven
+- PostgreSQL
+
+## Configuración de base de datos
+
+La aplicación requiere una base PostgreSQL de Catálogo configurada mediante variables de entorno:
+
+```bash
+export CATALOG_DB_URL='jdbc:postgresql://localhost:5432/catalog_sync'
+export CATALOG_DB_USERNAME='catalog_sync_app'
+read -r -s -p 'CATALOG_DB_PASSWORD: ' CATALOG_DB_PASSWORD
+echo
+export CATALOG_DB_PASSWORD
+```
+
+No guardes credenciales reales en el repositorio.
+
+## Ejecución local
+
+```bash
+mvn spring-boot:run
+```
+
+El servicio inicia por defecto en:
+
+```text
+http://localhost:8081
+```
+
+Podés cambiar el puerto mediante la variable de entorno `SERVER_PORT`.
+
+## Configuración externa
+
+`.env.example` es una plantilla de referencia; Spring Boot no la carga automáticamente.
+
+Configurá los valores reales desde la shell, IDE, CI/CD, Docker u otro entorno externo.
+
+| Variable | Descripción |
+| --- | --- |
+| `SERVER_PORT` | Puerto HTTP local del servicio. Es opcional; por defecto usa `8081`. |
+| `CATEDRA_GROUP_ID` | Identificador técnico del grupo asignado por la cátedra. |
+| `CATEDRA_TECHNICAL_JWT` | JWT de la cuenta técnica para autenticarse ante la cátedra. Es secreto. |
+| `CATEDRA_REST_BASE_URL` | URL base de la API REST de la cátedra. |
+| `CATEDRA_REST_CONNECT_TIMEOUT` | Tiempo máximo para establecer una conexión REST, por ejemplo `2s`. |
+| `CATEDRA_REST_READ_TIMEOUT` | Tiempo máximo de espera de una respuesta REST, por ejemplo `5s`. |
+| `CATEDRA_REDIS_HOST` | Host del Redis provisto por la cátedra. |
+| `CATEDRA_REDIS_PORT` | Puerto del Redis provisto por la cátedra. |
+| `CATEDRA_REDIS_USERNAME` | Usuario técnico de Redis. |
+| `CATEDRA_REDIS_PASSWORD` | Contraseña técnica de Redis. Es secreto. |
+| `CATEDRA_REDIS_READ_NAMESPACE` | Namespace de Redis desde el que Catálogo leerá datos de sincronización. |
+| `CATEDRA_REDIS_WRITE_NAMESPACE` | Namespace privado de escritura asignado al grupo. |
+| `CATEDRA_REDIS_CONNECT_TIMEOUT` | Tiempo máximo para establecer una conexión Redis, por ejemplo `2s`. |
+| `CATEDRA_REDIS_COMMAND_TIMEOUT` | Tiempo máximo de espera de un comando Redis, por ejemplo `5s`. |
+| `CATEDRA_KAFKA_BOOTSTRAP_SERVERS` | Direcciones iniciales de los brokers Kafka de la cátedra. |
+| `CATEDRA_KAFKA_CONSUMER_GROUP_ID` | Identificador del grupo consumidor de Catálogo. |
+| `CATEDRA_KAFKA_CATALOG_TOPIC` | Topic de Kafka con notificaciones de actualización del catálogo. |
+| `CATALOG_SYNC_RETRY_MAX_ATTEMPTS` | Máximo de ejecuciones completas por entrada, entre 1 y 3; por defecto `3`. |
+| `CATALOG_SYNC_RETRY_FIRST_BACKOFF` | Espera antes del segundo intento, positiva y de hasta `1s`; por defecto `1s`. |
+| `CATALOG_SYNC_RETRY_SECOND_BACKOFF` | Espera antes del tercer intento, no menor que la primera y de hasta `2s`; por defecto `2s`. |
+
+El servicio obtiene el snapshot de la cátedra para inicializar una base local sin versión aplicada. La sincronización incremental usa notificaciones Kafka, cambios y entidades vigentes de Redis, y persistencia local versionada. Al arrancar, el servicio también reconcilia la versión local con Redis antes de habilitar el listener.
+
+No versionar secretos ni archivos locales como `.env` o `application-local.*`.
+
+## Health check
+
+Con el servicio iniciado:
+
+```bash
+curl http://localhost:8081/actuator/health
+```
+
+La respuesta debe incluir:
+
+```json
+{"status":"UP"}
+```
+
+## Consultas locales del catálogo
+
+Las consultas de esta sección leen la réplica local de PostgreSQL. No consultan la API de la cátedra, Redis, Kafka ni las ocupaciones de turnos. Actualmente la configuración de seguridad solo permite el acceso anónimo a `/actuator/health`: las solicitudes HTTP a `/api/professionals` y `/api/professionals/{id}` reciben `403` hasta que se implemente la autenticación interna de C7.
+
+### Búsqueda de profesionales
+
+`GET /api/professionals` devuelve una página de profesionales. Los filtros son opcionales y se combinan con **AND**:
+
+| Parámetro | Significado |
+| --- | --- |
+| `name` | Coincidencia parcial, sin distinguir mayúsculas, en `firstName` o `lastName`. Se recortan los espacios de los extremos; un valor en blanco no filtra. Los caracteres `%`, `_` y `!` se buscan literalmente. |
+| `categoryId` | Coincidencia exacta con el ID de la categoría. |
+| `enabled` | Coincidencia exacta con `true` o `false`. Si se omite, se incluyen ambos estados. |
+| `availableOn` | Fecha ISO `YYYY-MM-DD`. Coincide si existe al menos un horario semanal local con `enabled=true` para el día de la semana de esa fecha. Si se omite, no se filtra por horarios. |
+| `page` | Número de página desde cero; por defecto `0`. |
+| `size` | Elementos por página; por defecto `20`, máximo `100`. |
+
+Por ejemplo, `GET /api/professionals?name=Ana&categoryId=3&enabled=true&availableOn=2026-10-26&page=0&size=20` busca profesionales habilitados que cumplan los demás filtros y tengan una regla semanal habilitada para el lunes. `availableOn` admite fechas pasadas y futuras; no aplica una ventana de reserva.
+
+El filtro `availableOn` representa **disponibilidad teórica de agenda semanal**. No exige implícitamente que el profesional tenga `enabled=true`: para eso se agrega `enabled=true` a la búsqueda. Tampoco comprueba una hora concreta, excepciones de calendario ni si existe un turno libre. El cálculo de turnos realmente disponibles corresponde al servicio de Turnos, que combina las reglas de agenda con las ocupaciones `HELD` y `CONFIRMED`.
+
+El controlador convierte la fecha a `LocalDate` y construye `ProfessionalSearchCriteria`. El caso de uso llama al puerto de búsqueda; `JpaProfessionalSearchAdapter` añade una subconsulta `EXISTS` sobre `weekly_schedules`, correlacionada por ID de profesional. Así, varios horarios coincidentes no duplican profesionales ni alteran los totales paginados.
+
+La respuesta del controlador contiene `content`, `page`, `size`, `totalElements` y `totalPages`. Cada elemento de `content` contiene `id`, `categoryId`, `firstName`, `lastName` y `enabled`; no expone entidades JPA ni marcas de tiempo. El orden es `lastName`, `firstName`, `id`, todos ascendentes. Una búsqueda sin coincidencias produce `200` con `content` vacío. Una fecha mal formada o una paginación inválida produce `400`, siempre que la solicitud llegue al controlador después del control de seguridad.
+
+### Detalle de un profesional
+
+`GET /api/professionals/{id}` devuelve el profesional, su categoría y sus horarios semanales locales, incluidos sus estados `enabled`. Los horarios deshabilitados permanecen visibles como tales. Un ID inexistente produce un `404` controlado. La respuesta tampoco expone entidades JPA.
+
+## Verificación
+
+```bash
+mvn clean verify
+```
+
+Para probar la lectura incremental contra un Redis real y aislado, instalá `redis-server` en el `PATH` y ejecutá:
+
+```bash
+./mvnw -Predis-local-integration clean verify
+```
+
+Ese perfil inicia un Redis temporal en `127.0.0.1` con credenciales ficticias, carga únicamente datos de prueba y cierra el proceso al terminar. Comprueba la lectura de metadata, changesets y entidades, incluidos los datos ausentes o inválidos. No usa las credenciales ni modifica el Redis de la cátedra; la verificación normal no requiere `redis-server`.
+
+Para comprobar la lectura contra el Redis de la cátedra, configurá `CATEDRA_REDIS_HOST`, `CATEDRA_REDIS_PORT`, `CATEDRA_REDIS_USERNAME` y `CATEDRA_REDIS_PASSWORD` fuera del repositorio y ejecutá:
+
+```bash
+./mvnw -Predis-integration clean verify
+```
+
+Este perfil solo lee: comprueba acceso, metadata y el changeset de la versión actual. Si esa clave no está retenida, la prueba de entidades se omite explícitamente. No carga fixtures ni modifica claves o PostgreSQL.
+
+Para ejecutar las pruebas de integración con PostgreSQL, usá una base de pruebas separada y descartable:
+
+```bash
+mvn -Ppostgres-integration clean verify
+```
+
+Ese perfil incluye pruebas de aplicación del snapshot que reemplazan datos del catálogo y la versión local. No lo ejecutes contra una base con datos que quieras conservar. También ejecuta `JpaProfessionalSearchAdapterIT`, que comprueba la consulta local, la combinación de filtros y que múltiples horarios no dupliquen profesionales ni inflen los totales; ese test revierte sus propios datos de prueba al finalizar. Las pruebas unitarias y HTTP cubren la fecha opcional, su formato, los errores `400` y la página vacía. La verificación normal no requiere PostgreSQL externo.
+
+Para verificar los metadatos del topic de Kafka de la cátedra, configurá las tres variables `CATEDRA_KAFKA_*` indicadas arriba y ejecutá:
+
+```bash
+mvn -Pkafka-integration clean verify
+```
+
+Esta prueba consulta metadatos; no consume mensajes ni modifica offsets.
+
+Para comprobar el caso de una notificación repetida con el PostgreSQL local y el Redis reales, cargá las variables externas y ejecutá:
+
+```bash
+./mvnw -Pcatedra-live-noop verify
+```
+
+Este perfil compara ambas versiones antes de invocar el listener con una notificación de prueba para la versión ya aplicada. Si difieren, falla antes de entrar en el flujo. Comprueba que la versión y los conteos locales no cambien. El puerto de eventos procesados se simula y los casos de uso de aplicación incremental y recuperación se reemplazan por objetos de prueba que fallan si se invocan, incluso si Redis avanza durante el diagnóstico. No verifica idempotencia durable. No consume un registro del broker ni confirma un offset real; la confirmación se verifica con un objeto de prueba. El perfil no se ejecuta durante `./mvnw verify` normal.
+
+### Recuperación ante brechas de versiones (C6.2)
+
+La sincronización utiliza el snapshot REST cuando la versión local es menor que
+`oldestAvailableVersion`, falta un changeset necesario o Redis está adelantado respecto
+de la notificación. También recupera si Redis avanza durante el recorrido incremental.
+Los fallos técnicos y los datos inválidos se propagan; no se interpretan como historial ausente.
+
+El snapshot debe cubrir como mínimo la versión requerida. Se guarda su versión real,
+incluso si supera la notificada por Kafka. La aplicación bloquea la fila de estado antes
+de modificar entidades y rechaza snapshots inferiores a una versión local ya confirmada.
+Cada versión incremental conserva su transacción propia; si una etapa posterior falla,
+los incrementos ya confirmados permanecen aplicados. Las comprobaciones Redis no
+constituyen una lectura atómica ni convierten sus hashes actuales en estados históricos.
+
+C6.2 conecta `ProcessedCatalogEventPort`, cuya persistencia se incorporó en C6.1.
+Un evento conocido con igual versión termina sin repetir la sincronización; una versión
+conflictiva se rechaza. Un evento nuevo se registra únicamente después del éxito y
+Kafka se confirma después del commit de ese registro. Se registra la versión del evento,
+aunque el snapshot haya aplicado una superior. La consulta inicial no reserva la ejecución:
+dos consumidores pueden intentar procesar antes del registro. La clave primaria garantiza
+unicidad del registro; un conflicto concurrente de versiones puede detectarse después de
+otros commits del catálogo, que no se revierten por ese conflicto.
+
+`CatalogGapRecoveryIT`, dentro de `postgres-integration`, usa PostgreSQL de pruebas,
+el cliente REST real con HTTP local controlado y un puerto Redis simulado. No consulta
+la infraestructura real de la cátedra. Los reintentos automáticos corresponden a C6.4.
+
+### Reconciliación al arrancar (C6.3)
+
+El arranque ejecuta `CatalogInitializationRunner` (`@Order(0)`) y después
+`CatalogReconciliationRunner` (`@Order(1)`). Si ya existe una versión local, la
+inicialización conserva el catálogo y omite su descarga inicial. La reconciliación
+compara esa versión con metadata Redis válida: si coinciden no escribe; si hay atraso,
+reutiliza `CatalogVersionSynchronizationService` para aplicar incrementos o recuperar
+mediante snapshot. No genera ni registra identificadores ficticios de eventos Kafka.
+
+Una versión local adelantada respecto de la observada en Redis se conserva y genera
+una advertencia fija. La diferencia puede corresponder a una observación atrasada de
+Redis, especialmente después de aplicar un snapshot más nuevo; no implica por sí sola
+una inconsistencia confirmada ni provoca una descarga para reducir la versión local.
+
+Ambos runners deben terminar antes de `ApplicationReadyEvent`. El listener mantiene
+`autoStartup=false` en su anotación y en la fábrica; `CatedraCatalogListenerStarter`
+inicia explícitamente su contenedor después de ese evento. El orden de los runners por
+sí solo no controla Kafka. Si la reconciliación falla, el arranque aborta con un mensaje
+fijo sin causa sensible y no llega al inicio del consumidor. Los commits incrementales
+anteriores a un fallo posterior permanecen aplicados, como en C6.2.
+
+`catalog.reconciliation.enabled` está habilitado por defecto y se desactiva en
+`application-test.yml`; las pruebas de arranque lo habilitan explícitamente cuando
+corresponde. El perfil PostgreSQL verifica reconciliación y reinicios con transacciones
+reales. Las pruebas de ciclo de vida usan un registry Kafka real con contenedor
+controlado, sin conectarse a un broker.
+
+Esta comprobación ocurre al arrancar. No existe un scheduler: una notificación perdida
+mientras el servicio permanece encendido indefinidamente no se detecta proactivamente
+sin otro disparador. Las lecturas Redis continúan siendo observaciones independientes,
+no un snapshot atómico del catálogo remoto.
+
+### Reintentos acotados de sincronización (C6.4)
+
+`SynchronizationRetryExecutor` envuelve cada invocación completa de inicialización,
+reconciliación o procesamiento de una notificación Kafka. Cada intento vuelve a entrar al
+caso de uso, que relee el estado durable. Se usan como máximo tres ejecuciones; los backoffs predeterminados son `1s` y `2s`.
+Se pueden reducir los intentos y las esperas mediante las variables `CATALOG_SYNC_RETRY_*`
+anteriores, sujetas a validación al iniciar la configuración.
+
+Solo se repiten fallos transitorios reconocidos por tipo: indisponibilidad de red/timeout,
+y respuestas REST HTTP 502, 503 o 504. Errores de autenticación, autorización, contrato,
+datos, integridad, conflictos de `eventId` o inconsistencias de versión no se reintentan.
+La clasificación no inspecciona mensajes de excepción ni detalles HTTP. Los logs del
+ejecutor usan únicamente una operación fija, número de intento y duración; no imprimen
+excepciones, cuerpos ni credenciales.
+
+En el listener, la decodificación y validación de la clave ocurren antes del reintento.
+Cada intento repite el caso de uso completo, incluida la consulta de idempotencia C6.1;
+el offset se confirma una sola vez y fuera del ejecutor, únicamente tras el éxito y el
+registro durable del evento. Si los intentos se agotan, el error se propaga al manejador
+Kafka existente, que detiene el contenedor; el mensaje no se confirma.
+
+La factoría del consumidor fija `max.poll.records=1` y `auto.offset.reset=earliest`.
+El primero limita a un registro el lote entregado por poll y el segundo solicita empezar
+desde el offset más antiguo retenido cuando no hay un offset válido. No limitan la
+duración de un procesamiento individual ni recuperan registros que Kafka ya eliminó por
+retención. Los backoffs limitan solo las esperas propias del ejecutor: las reconexiones
+internas de Kafka, Lettuce o el cliente HTTP son mecanismos separados. Por eso el tiempo
+total no tiene un límite garantizado y puede superar `max.poll.interval.ms`; esta
+configuración reduce el tamaño del lote, pero no elimina ese riesgo.
+
+Si la inicialización o reconciliación de arranque agota sus intentos, el proceso falla
+antes de que `ApplicationReadyEvent` habilite el listener. Durante la ejecución, un fallo
+Kafka agotado detiene el contenedor según la política existente; no hay un reinicio
+automático ilimitado del consumidor.

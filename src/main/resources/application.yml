@@ -1,0 +1,42 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+catalog:
+  synchronization:
+    retry:
+      max-attempts: ${CATALOG_SYNC_RETRY_MAX_ATTEMPTS:3}
+      first-backoff: ${CATALOG_SYNC_RETRY_FIRST_BACKOFF:1s}
+      second-backoff: ${CATALOG_SYNC_RETRY_SECOND_BACKOFF:2s}
+
+catedra:
+  group-id: ${CATEDRA_GROUP_ID:}
+  technical-jwt: ${CATEDRA_TECHNICAL_JWT:}
+  rest:
+    base-url: ${CATEDRA_REST_BASE_URL:}
+    connect-timeout: ${CATEDRA_REST_CONNECT_TIMEOUT:}
+    read-timeout: ${CATEDRA_REST_READ_TIMEOUT:}
+  redis:
+    host: ${CATEDRA_REDIS_HOST:}
+    port: ${CATEDRA_REDIS_PORT:}
+    username: ${CATEDRA_REDIS_USERNAME:}
+    password: ${CATEDRA_REDIS_PASSWORD:}
+    read-namespace: ${CATEDRA_REDIS_READ_NAMESPACE:}
+    write-namespace: ${CATEDRA_REDIS_WRITE_NAMESPACE:}
+    connect-timeout: ${CATEDRA_REDIS_CONNECT_TIMEOUT:}
+    command-timeout: ${CATEDRA_REDIS_COMMAND_TIMEOUT:}
+  kafka:
+    bootstrap-servers: ${CATEDRA_KAFKA_BOOTSTRAP_SERVERS:}
+    consumer-group-id: ${CATEDRA_KAFKA_CONSUMER_GROUP_ID:}
+    catalog-topic: ${CATEDRA_KAFKA_CATALOG_TOPIC:}
+
+spring:
+  datasource:
+    url: ${CATALOG_DB_URL}
+    username: ${CATALOG_DB_USERNAME}
+    password: ${CATALOG_DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+    validate-on-migrate: true
