@@ -112,6 +112,27 @@ La respuesta del controlador contiene `content`, `page`, `size`, `totalElements`
 
 `GET /api/professionals/{id}` devuelve el profesional, su categoría y sus horarios semanales locales, incluidos sus estados `enabled`. Los horarios deshabilitados permanecen visibles como tales. Un ID inexistente produce un `404` controlado. La respuesta tampoco expone entidades JPA.
 
+## Contrato interno para Appointment (C7.1)
+
+`GET /internal/api/professionals/{id}` define la consulta local para Turnos. Devuelve
+`id`, `firstName`, `lastName`, `enabled`, `category` (`id`, `name`, `enabled`) y
+`weeklySchedules` (`id`, `dayOfWeek`, `startTime`, `endTime`,
+`slotDurationMinutes`, `enabled`). No incluye `category.description`, entidades JPA
+ni campos de auditoría. Los días usan nombres como `MONDAY` y las horas ISO locales, por ejemplo `09:00:00`.
+
+El contrato funcional devuelve `200` para profesionales existentes, incluidos los
+deshabilitados. Incluye horarios habilitados y deshabilitados; sin horarios devuelve
+`[]`. Un profesional inexistente produce `404 application/problem+json`. Un ID que no
+puede convertirse a `long` produce `400`; no se exige positividad no documentada.
+Estas reglas semanales no garantizan slots libres ni consultan ocupaciones.
+
+Durante C7.1 la cadena de seguridad de producción sigue denegando el acceso anónimo
+con `403`, antes de llegar al controlador. C7.2 incorporará autenticación y autorización
+con JWT técnico interno, separado del JWT de cátedra y del JWT de usuario final.
+Las pruebas MVC aisladas verifican el contrato funcional; la prueba HTTP con la cadena
+real verifica el rechazo anónimo. El IT PostgreSQL usa una base descartable y no
+requiere REST, Redis ni Kafka reales.
+
 ## Verificación
 
 ```bash
