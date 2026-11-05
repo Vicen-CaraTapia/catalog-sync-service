@@ -32,6 +32,11 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @ActiveProfiles("test")
 @AutoConfigureRestTestClient
 class CatalogSyncApplicationTests {
+    @org.springframework.test.context.DynamicPropertySource
+    static void internalJwtTestKey(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.register(registry);
+    }
+
 
 	@MockitoBean
 	private ProfessionalCategoryJpaRepository professionalCategoryRepository;

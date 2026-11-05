@@ -133,6 +133,49 @@ Las pruebas MVC aisladas verifican el contrato funcional; la prueba HTTP con la 
 real verifica el rechazo anónimo. El IT PostgreSQL usa una base descartable y no
 requiere REST, Redis ni Kafka reales.
 
+## Base de validación JWT interna (C7.2, paso 1)
+
+Catalog incorpora Spring Security OAuth2 Resource Server y `NimbusJwtDecoder`, con
+verificación exclusiva RS256. Appointment deberá conservar la clave privada; Catalog
+carga únicamente la clave pública RSA (mínimo 2048 bits) desde un archivo PEM externo
+X.509 SubjectPublicKeyInfo, delimitado por `BEGIN PUBLIC KEY`. No se admiten claves
+privadas, PKCS#1, certificados, claves EC ni ubicaciones HTTP/classpath. No hay OIDC
+remoto, JWKS ni infraestructura de rotación en este alcance.
+
+Convenciones aprobadas del proyecto, distintas de las constantes de la cátedra:
+
+| Claim | Contrato interno |
+| --- | --- |
+| `iss` | `appointment-reservation-service` |
+| `aud` | Debe contener `catalog-sync-service`. |
+| `sub` | Exactamente `appointment-reservation-service`. |
+| `exp` | Obligatorio, con fecha válida. |
+| `nbf` | Se valida cuando está presente. |
+| `scope` | Cadena de permisos separados por espacios; el permiso de lectura es `catalog:read`. |
+
+Se toleran 30 segundos de diferencia de reloj entre hosts para `exp` y `nbf`.
+La firma se verifica antes de aceptar claims. Un token de usuario final HS512 o un
+token con otra clave/identidad no satisface este contrato. Un scope ausente no concede
+permisos; un scope mal tipado se rechaza. Los permisos se comparan como autoridades
+exactas, nunca como subcadenas.
+
+La configuración se registra explícitamente con binding tipado al iniciar un contexto
+HTTP servlet. Las tres propiedades son obligatorias; una ubicación o clave inválida
+impide iniciar ese contexto. Los contextos de sincronización sin servidor HTTP no
+necesitan esta clave. Cada test HTTP de aplicación completa usa un par RSA efímero y
+un PEM público temporal; no se versiona material criptográfico.
+
+| Propiedad | Variable de entorno |
+| --- | --- |
+| `catalog.security.internal-jwt.public-key-location` | `INTERNAL_CATALOG_JWT_PUBLIC_KEY_LOCATION` (URI `file:` del PEM externo) |
+| `catalog.security.internal-jwt.issuer` | `INTERNAL_CATALOG_JWT_ISSUER` |
+| `catalog.security.internal-jwt.audience` | `INTERNAL_CATALOG_JWT_AUDIENCE` |
+
+Este paso prepara el decoder, pero **todavía no lo conecta a las cadenas HTTP**.
+La política actual sigue denegando las consultas internas con `403`. La exigencia del
+Bearer, autorización `catalog:read` y respuestas sanitizadas `401`/`403` se integrarán
+en el paso 2; aún no se puede acceder al endpoint presentando el token.
+
 ## Verificación
 
 ```bash
