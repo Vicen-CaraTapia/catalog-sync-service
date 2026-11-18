@@ -1,7 +1,7 @@
 <!-- calidad:inicio -->
-![Calidad](https://img.shields.io/badge/Calidad-70%2F100-green) ![Aprobar](https://img.shields.io/badge/Aprobar-no-red) ![Destacar](https://img.shields.io/badge/Destacar-no-lightgrey) ![Build](https://img.shields.io/badge/Build-OK-green) ![Duplicación](https://img.shields.io/badge/Duplicaci%C3%B3n-6.7%25-orange) ![%POO](https://img.shields.io/badge/%25POO-79%25-yellow) ![Sueltas](https://img.shields.io/badge/Sueltas-0-green) ![D1](https://img.shields.io/badge/D1-5-red) ![D2](https://img.shields.io/badge/D2-100-green) ![D4](https://img.shields.io/badge/D4-50-orange) ![D5](https://img.shields.io/badge/D5-100-green) ![D6](https://img.shields.io/badge/D6-100-green) ![D7](https://img.shields.io/badge/D7-77-yellow)
+![Calidad](https://img.shields.io/badge/Calidad-69%2F100-green) ![Aprobar](https://img.shields.io/badge/Aprobar-no-red) ![Destacar](https://img.shields.io/badge/Destacar-no-lightgrey) ![Build](https://img.shields.io/badge/Build-OK-green) ![Duplicación](https://img.shields.io/badge/Duplicaci%C3%B3n-6.7%25-orange) ![%POO](https://img.shields.io/badge/%25POO-79%25-yellow) ![Sueltas](https://img.shields.io/badge/Sueltas-0-green) ![D1](https://img.shields.io/badge/D1-4-red) ![D2](https://img.shields.io/badge/D2-100-green) ![D4](https://img.shields.io/badge/D4-50-orange) ![D5](https://img.shields.io/badge/D5-100-green) ![D6](https://img.shields.io/badge/D6-100-green) ![D7](https://img.shields.io/badge/D7-77-yellow)
 
-**Calidad (heurístico, 7 dimensiones):** índice **70/100** · build **OK** · aprobar **no (6/11)** · destacar **no**
+**Calidad (heurístico, 7 dimensiones):** índice **69/100** · build **OK** · aprobar **no (6/11)** · destacar **no**
 Detalle completo en [`docs/EVALUACION.md`](docs/EVALUACION.md).
 <!-- calidad:fin -->
 
