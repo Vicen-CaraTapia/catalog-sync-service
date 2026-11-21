@@ -14,6 +14,11 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @ActiveProfiles("test")
 class PostgreSqlConnectivityIT {
+    @org.springframework.test.context.DynamicPropertySource
+    static void internalJwtTestKey(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.register(registry);
+    }
+
 
 	@Test
 	void dataSourceConnectionIsValid(@Autowired DataSource dataSource) throws SQLException {

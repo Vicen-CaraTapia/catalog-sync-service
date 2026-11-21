@@ -32,6 +32,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
 class JpaProfessionalDetailsAdapterIT {
+    @org.springframework.test.context.DynamicPropertySource
+    static void internalJwtTestKey(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        ar.edu.um.prog2.catalogsynctest.security.InternalJwtTestKeys.register(registry);
+    }
+
 
     private static final long CATEGORY_ID = -42_001L;
     private static final long PROFESSIONAL_ID = -42_101L;
