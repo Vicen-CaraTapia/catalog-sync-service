@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
+import ar.edu.um.prog2.catalogsynctest.config.CatedraTestProperties;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.config.CatedraRestClientConfiguration;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraHttpException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraTimeoutException;
@@ -206,29 +207,8 @@ class CatedraRestClientTest {
 	}
 
 	private CatedraRestClient clientFor(String baseUrl, Duration readTimeout) {
-		CatedraIntegrationProperties properties = new CatedraIntegrationProperties(
-				"test-catalog-sync",
-				"test-technical-jwt",
-				new CatedraIntegrationProperties.RestProperties(
-						baseUrl,
-						Duration.ofSeconds(1),
-						readTimeout
-				),
-				new CatedraIntegrationProperties.RedisProperties(
-						"localhost",
-						6379,
-						"test-user",
-						"test-password",
-						"catedra:sync:*",
-						"alumnos:test-catalog-sync:*",
-						Duration.ofSeconds(2),
-						Duration.ofSeconds(5)
-				),
-				new CatedraIntegrationProperties.KafkaProperties(
-						"localhost:19092",
-						"test-catalog-sync-consumer",
-						"catedra.catalog.test-catalog-sync"
-				)
+		CatedraIntegrationProperties properties = CatedraTestProperties.forRest(
+				new CatedraIntegrationProperties.RestProperties(baseUrl, Duration.ofSeconds(1), readTimeout)
 		);
 
 		return new CatedraRestClientConfiguration().catedraRestClient(properties, new ObjectMapper());

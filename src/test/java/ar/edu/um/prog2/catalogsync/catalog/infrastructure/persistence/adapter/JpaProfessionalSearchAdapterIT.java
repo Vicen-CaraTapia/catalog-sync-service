@@ -45,7 +45,6 @@ class JpaProfessionalSearchAdapterIT {
     private static final long SECOND_SCHEDULE_ID = -41_202L;
     private static final long THIRD_SCHEDULE_ID = -41_203L;
     private static final long FOURTH_SCHEDULE_ID = -41_204L;
-    private static final long FIFTH_SCHEDULE_ID = -41_205L;
     private static final LocalDate MONDAY = LocalDate.of(2026, 10, 26);
     private static final Instant CREATED_AT = Instant.parse("2026-10-20T00:00:00Z");
     private static final Instant UPDATED_AT = Instant.parse("2026-10-20T01:00:00Z");

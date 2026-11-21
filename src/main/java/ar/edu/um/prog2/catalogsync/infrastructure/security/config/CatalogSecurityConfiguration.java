@@ -27,7 +27,7 @@ public class CatalogSecurityConfiguration {
     @Bean
     @Order(1)
     SecurityFilterChain internalCatalogSecurityFilterChain(HttpSecurity http, JwtDecoder decoder,
-            InternalCatalogSecurityErrorHandler errors) throws Exception {
+            InternalCatalogSecurityErrorHandler errors) {
         var authorities = new JwtGrantedAuthoritiesConverter();
         authorities.setAuthoritiesClaimName("scope");
         var authentication = new JwtAuthenticationConverter();
@@ -51,7 +51,7 @@ public class CatalogSecurityConfiguration {
 
     @Bean
     @Order(2)
-    SecurityFilterChain remainingRequestsSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain remainingRequestsSecurityFilterChain(HttpSecurity http) {
         return http.authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .anyRequest().denyAll())

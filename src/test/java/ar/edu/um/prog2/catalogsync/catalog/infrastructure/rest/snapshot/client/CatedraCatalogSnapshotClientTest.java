@@ -13,6 +13,7 @@ import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
+import ar.edu.um.prog2.catalogsynctest.config.CatedraTestProperties;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.dto.CatalogSnapshotResponse;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.rest.snapshot.exception.InvalidCatalogSnapshotException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.config.CatedraRestClientConfiguration;
@@ -215,28 +216,11 @@ class CatedraCatalogSnapshotClientTest {
     }
 
     private CatedraIntegrationProperties properties() {
-        return new CatedraIntegrationProperties(
-                "test-catalog-sync",
-                "test-technical-jwt",
+        return CatedraTestProperties.forRest(
                 new CatedraIntegrationProperties.RestProperties(
                         "http://localhost:" + server.getAddress().getPort(),
                         Duration.ofSeconds(1),
                         Duration.ofSeconds(1)
-                ),
-                new CatedraIntegrationProperties.RedisProperties(
-                        "localhost",
-                        6379,
-                        "test-user",
-                        "test-password",
-                        "catedra:sync:*",
-                        "alumnos:test-catalog-sync:*",
-                        Duration.ofSeconds(2),
-                        Duration.ofSeconds(5)
-                ),
-                new CatedraIntegrationProperties.KafkaProperties(
-                        "localhost:19092",
-                        "test-catalog-sync-consumer",
-                        "catedra.catalog.test-catalog-sync"
                 )
         );
     }
