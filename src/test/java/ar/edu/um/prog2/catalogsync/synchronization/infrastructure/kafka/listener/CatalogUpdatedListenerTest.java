@@ -42,7 +42,8 @@ class CatalogUpdatedListenerTest {
 
 	@Test
 	void rejectsMissingMessageKeyWithoutDelegatingOrAcknowledging() {
-		assertThatThrownBy(() -> listener.onMessage(record(null, validJson()), acknowledgment))
+		var notification = record(null, validJson());
+		assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
 				.isInstanceOf(InvalidCatalogUpdatedEventException.class);
 
 		verifyNoInteractions(useCase, acknowledgment);
@@ -50,7 +51,8 @@ class CatalogUpdatedListenerTest {
 
 	@Test
 	void rejectsMismatchedMessageKeyWithoutDelegatingOrAcknowledging() {
-		assertThatThrownBy(() -> listener.onMessage(record("8", validJson()), acknowledgment))
+		var notification = record("8", validJson());
+		assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
 				.isInstanceOf(InvalidCatalogUpdatedEventException.class);
 
 		verifyNoInteractions(useCase, acknowledgment);
@@ -58,7 +60,8 @@ class CatalogUpdatedListenerTest {
 
 	@Test
 	void propagatesInvalidJsonWithoutDelegatingOrAcknowledging() {
-		assertThatThrownBy(() -> listener.onMessage(record("7", "{not-json"), acknowledgment))
+		var notification = record("7", "{not-json");
+		assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
 				.isInstanceOf(InvalidCatalogUpdatedEventException.class);
 
 		verifyNoInteractions(useCase, acknowledgment);

@@ -30,8 +30,9 @@ class CatalogIncrementalChangesTest {
         assertThat(changes.currentProfessionals()).extracting(Professional::id).containsExactly(15L);
         assertThat(changes.currentProfessionals().getFirst().enabled()).isFalse();
         assertThat(changes.currentWeeklySchedules()).isEmpty();
+        var currentProfessionals = changes.currentProfessionals();
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> changes.currentProfessionals().clear());
+                .isThrownBy(currentProfessionals::clear);
     }
 
     @Test

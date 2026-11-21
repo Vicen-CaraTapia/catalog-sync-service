@@ -181,7 +181,8 @@ class CatalogGapRecoveryIT {
         RESPONSE.set(new Response(200, snapshotJson(6)));
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = record(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(InsufficientCatalogSnapshotVersionException.class);
 
         assertFailedWithoutChanges(before);
@@ -193,7 +194,8 @@ class CatalogGapRecoveryIT {
         RESPONSE.set(new Response(503, "{\"code\":\"CATALOG_UNAVAILABLE\"}"));
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = record(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(CatedraHttpException.class);
 
         assertFailedWithoutChanges(before);
@@ -206,7 +208,8 @@ class CatalogGapRecoveryIT {
                 + " CHECK (applied_version IS DISTINCT FROM 8)");
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = record(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         assertFailedWithoutChanges(before);
@@ -219,7 +222,8 @@ class CatalogGapRecoveryIT {
                 List.of(new ProfessionalCategory(999L, "Concurrent", null, true,
                         Instant.EPOCH, Instant.EPOCH)), List.of(), List.of())));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = record(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(StaleCatalogSnapshotException.class);
 
         assertThat(appliedVersion()).isEqualTo(9L);
@@ -248,7 +252,8 @@ class CatalogGapRecoveryIT {
         processedEvents.registerProcessed(eventId, 8);
         var before = state();
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = record(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(ConflictingCatalogEventException.class);
 
         assertThat(state()).isEqualTo(before);
@@ -299,7 +304,8 @@ class CatalogGapRecoveryIT {
         when(changesPort.readChanges(5)).thenReturn(Optional.empty());
         RESPONSE.set(new Response(503, "{}"));
 
-        assertThatThrownBy(() -> listener.onMessage(record(6), acknowledgment))
+        var notification = record(6);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(CatedraHttpException.class);
 
         assertThat(appliedVersion()).isEqualTo(4L);

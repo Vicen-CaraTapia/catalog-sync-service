@@ -95,7 +95,8 @@ class CatedraRedisCatalogChangesAdapterTest {
     void doesNotTurnInvalidChangesetIntoAbsence() {
         when(client.readChangesJson(7)).thenReturn(Optional.of("{not-json"));
 
-        assertThatThrownBy(() -> adapter().readChanges(7))
+        var changesAdapter = adapter();
+        assertThatThrownBy(() -> changesAdapter.readChanges(7))
                 .isInstanceOf(InvalidCatedraRedisDataException.class);
     }
 
@@ -107,7 +108,8 @@ class CatedraRedisCatalogChangesAdapterTest {
         when(client.readProfessionalJson(List.of(15L)))
                 .thenThrow(new InvalidCatedraRedisDataException());
 
-        assertThatThrownBy(() -> adapter().readChanges(7))
+        var changesAdapter = adapter();
+        assertThatThrownBy(() -> changesAdapter.readChanges(7))
                 .isInstanceOf(InvalidCatedraRedisDataException.class);
     }
 

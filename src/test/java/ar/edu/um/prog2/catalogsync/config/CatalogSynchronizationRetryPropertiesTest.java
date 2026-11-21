@@ -68,11 +68,13 @@ class CatalogSynchronizationRetryPropertiesTest {
 
     @Test
     void directConstructionCannotBypassTheBudgetOrNullDelayValidation() {
+        var firstBackoff = Duration.ofSeconds(1);
+        var secondBackoff = Duration.ofSeconds(2);
         assertThatThrownBy(() -> new CatalogSynchronizationRetryProperties(4,
-                Duration.ofSeconds(1), Duration.ofSeconds(2))).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new CatalogSynchronizationRetryProperties(3, null, Duration.ofSeconds(2)))
+                firstBackoff, secondBackoff)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new CatalogSynchronizationRetryProperties(3, null, secondBackoff))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new CatalogSynchronizationRetryProperties(3, Duration.ofSeconds(1), null))
+        assertThatThrownBy(() -> new CatalogSynchronizationRetryProperties(3, firstBackoff, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -33,46 +33,44 @@ class CatalogSnapshotTest {
     @Test
     void rejectsDuplicateCategoryIds() {
         ProfessionalCategory category = category(1L);
+        var categories = List.of(category, category);
+        List<Professional> professionals = List.of();
+        List<WeeklySchedule> schedules = List.of();
 
-        assertThatThrownBy(() -> new CatalogSnapshot(
-                1L,
-                UPDATED_AT,
-                List.of(category, category),
-                List.of(),
-                List.of()
-        )).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new CatalogSnapshot(1L, UPDATED_AT, categories, professionals, schedules))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsProfessionalReferencingAnAbsentCategory() {
-        assertThatThrownBy(() -> new CatalogSnapshot(
-                1L,
-                UPDATED_AT,
-                List.of(),
-                List.of(professional(99L)),
-                List.of()
-        )).isInstanceOf(IllegalArgumentException.class);
+        List<ProfessionalCategory> categories = List.of();
+        var professionals = List.of(professional(99L));
+        List<WeeklySchedule> schedules = List.of();
+
+        assertThatThrownBy(() -> new CatalogSnapshot(1L, UPDATED_AT, categories, professionals, schedules))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsWeeklyScheduleReferencingAnAbsentProfessional() {
-        assertThatThrownBy(() -> new CatalogSnapshot(
-                1L,
-                UPDATED_AT,
-                List.of(category(1L)),
-                List.of(),
-                List.of(schedule(99L))
-        )).isInstanceOf(IllegalArgumentException.class);
+        var categories = List.of(category(1L));
+        List<Professional> professionals = List.of();
+        var schedules = List.of(schedule(99L));
+
+        assertThatThrownBy(() -> new CatalogSnapshot(1L, UPDATED_AT, categories, professionals, schedules))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsNonPositiveSlotDuration() {
+        var startTime = LocalTime.of(9, 0);
+        var endTime = LocalTime.of(12, 0);
         assertThatThrownBy(() -> new WeeklySchedule(
                 1L,
                 1L,
                 DayOfWeek.MONDAY,
-                LocalTime.of(9, 0),
-                LocalTime.of(12, 0),
+                startTime,
+                endTime,
                 0,
                 true,
                 CREATED_AT,
@@ -83,8 +81,10 @@ class CatalogSnapshotTest {
     @Test
     void exposesImmutableCollections() {
         CatalogSnapshot snapshot = validSnapshot();
+        var professionals = snapshot.professionals();
+        var additionalProfessional = professional(1L);
 
-        assertThatThrownBy(() -> snapshot.professionals().add(professional(1L)))
+        assertThatThrownBy(() -> professionals.add(additionalProfessional))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 

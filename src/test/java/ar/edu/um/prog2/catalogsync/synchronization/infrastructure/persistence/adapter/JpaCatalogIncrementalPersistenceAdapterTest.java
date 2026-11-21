@@ -123,7 +123,8 @@ class JpaCatalogIncrementalPersistenceAdapterTest {
         doThrow(new DataIntegrityViolationException("test constraint failure"))
                 .when(scheduleRepository).flush();
 
-        assertThatThrownBy(() -> adapter.applyAndAdvanceVersion(changes()))
+        var incrementalChanges = changes();
+        assertThatThrownBy(() -> adapter.applyAndAdvanceVersion(incrementalChanges))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         verify(stateRepository, never()).findByStateId(any());

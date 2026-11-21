@@ -104,7 +104,8 @@ class CatedraRedisIncrementalReadTest {
         when(hashOperations.multiGet("catedra:sync:professionals", List.of("15", "16")))
                 .thenReturn(Arrays.asList("professional-json", null));
 
-        assertThatThrownBy(() -> client.readProfessionalJson(List.of(15L, 16L)))
+        var ids = List.of(15L, 16L);
+        assertThatThrownBy(() -> client.readProfessionalJson(ids))
                 .isInstanceOf(InvalidCatedraRedisDataException.class);
     }
 

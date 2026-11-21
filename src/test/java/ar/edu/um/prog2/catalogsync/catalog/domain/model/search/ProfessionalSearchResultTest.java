@@ -29,7 +29,8 @@ class ProfessionalSearchResultTest {
         professionals.clear();
 
         assertThat(result.content()).hasSize(1);
-        assertThatThrownBy(() -> result.content().clear())
+        var resultContent = result.content();
+        assertThatThrownBy(resultContent::clear)
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -49,9 +50,11 @@ class ProfessionalSearchResultTest {
 
     @Test
     void rejectsNullElementsAndContentLargerThanPageSize() {
-        assertThatThrownBy(() -> new ProfessionalSearchResult(new ArrayList<>(List.of(professional(), professional())), 0, 1, 2, 2))
+        var oversizedContent = new ArrayList<>(List.of(professional(), professional()));
+        var contentWithNull = new ArrayList<>(java.util.Arrays.asList(professional(), null));
+        assertThatThrownBy(() -> new ProfessionalSearchResult(oversizedContent, 0, 1, 2, 2))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new ProfessionalSearchResult(new ArrayList<>(java.util.Arrays.asList(professional(), null)), 0, 20, 1, 1))
+        assertThatThrownBy(() -> new ProfessionalSearchResult(contentWithNull, 0, 20, 1, 1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

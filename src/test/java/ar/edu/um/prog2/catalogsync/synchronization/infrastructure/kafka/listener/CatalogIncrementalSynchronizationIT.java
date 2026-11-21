@@ -153,7 +153,8 @@ class CatalogIncrementalSynchronizationIT {
         when(changesPort.readChanges(6)).thenReturn(Optional.of(changes(6,
                 List.of(), List.of(professional(INVALID_CATEGORY_ID, "Rejected", false)), List.of())));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = record(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(RuntimeException.class);
 
         assertThat(appliedVersion()).isEqualTo(5L);
@@ -208,7 +209,8 @@ class CatalogIncrementalSynchronizationIT {
                 List.of(category("Committed", false)), List.of(), List.of())));
         when(recoverSnapshot.recover(8)).thenThrow(new IllegalStateException("Controlled recovery failure"));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = record(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Controlled recovery failure");
 

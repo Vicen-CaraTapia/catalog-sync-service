@@ -126,8 +126,9 @@ class ApplyCatalogIncrementalVersionIT {
 
     @Test
     void rejectsOutOfOrderVersionWithoutChangingData() {
-        assertThatThrownBy(() -> applyVersion.apply(new CatalogIncrementalChanges(8,
-                List.of(category(CATEGORY, "Rejected", false)), List.of(), List.of())))
+        var changes = new CatalogIncrementalChanges(8,
+                List.of(category(CATEGORY, "Rejected", false)), List.of(), List.of());
+        assertThatThrownBy(() -> applyVersion.apply(changes))
                 .isInstanceOf(IllegalStateException.class);
 
         assertThat(appliedVersion()).isEqualTo(6L);

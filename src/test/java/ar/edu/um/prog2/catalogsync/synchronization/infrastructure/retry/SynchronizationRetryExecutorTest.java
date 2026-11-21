@@ -122,9 +122,10 @@ class SynchronizationRetryExecutorTest {
     @Test
     void alreadyInterruptedThreadDoesNotExecuteOrWait() {
         var calls = new AtomicInteger();
+        var retryExecutor = executor(3);
         try {
             Thread.currentThread().interrupt();
-            assertThatThrownBy(() -> executor(3).execute(RECONCILIATION, calls::incrementAndGet))
+            assertThatThrownBy(() -> retryExecutor.execute(RECONCILIATION, calls::incrementAndGet))
                     .isInstanceOf(SynchronizationRetryInterruptedException.class)
                     .hasCauseInstanceOf(InterruptedException.class);
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
