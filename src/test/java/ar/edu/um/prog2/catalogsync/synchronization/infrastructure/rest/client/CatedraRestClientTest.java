@@ -9,6 +9,8 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
@@ -166,21 +168,33 @@ class CatedraRestClientTest {
 
 	@Test
 	void getTranslatesReadTimeout() throws IOException {
+		var requestReceived = new CountDownLatch(1);
+		var releaseResponse = new CountDownLatch(1);
 		CatedraRestClient client = startClient(exchange -> {
+			requestReceived.countDown();
 			try {
-				Thread.sleep(250);
-				respond(exchange, 200, MediaType.APPLICATION_JSON_VALUE, "{\"value\":\"late\"}");
+				// Bound server cleanup even if the test fails before releasing the response.
+				if (releaseResponse.await(5, TimeUnit.SECONDS)) {
+					respond(exchange, 200, MediaType.APPLICATION_JSON_VALUE, "{\"value\":\"late\"}");
+				}
 			}
 			catch (InterruptedException _) {
 				Thread.currentThread().interrupt();
 			}
 			catch (IOException _) {
 				// The client may have disconnected after its timeout.
+			} finally {
+				exchange.close();
 			}
-		}, Duration.ofMillis(25));
+		}, Duration.ofSeconds(1));
 
-		assertThatThrownBy(() -> client.get("/timeout", TestResponse.class))
-				.isInstanceOf(CatedraTimeoutException.class);
+		try {
+			assertThatThrownBy(() -> client.get("/timeout", TestResponse.class))
+					.isInstanceOf(CatedraTimeoutException.class);
+			assertThat(requestReceived.getCount()).as("server received the request before timeout").isZero();
+		} finally {
+			releaseResponse.countDown();
+		}
 	}
 
 	@Test
