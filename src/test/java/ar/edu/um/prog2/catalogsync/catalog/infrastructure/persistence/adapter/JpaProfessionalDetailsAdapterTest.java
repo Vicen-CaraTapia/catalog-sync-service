@@ -1,5 +1,6 @@
 package ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.adapter;
 
+import ar.edu.um.prog2.catalogsync.catalog.domain.model.WeeklySchedule;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalCategoryEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.WeeklyScheduleEntity;
@@ -61,9 +62,9 @@ class JpaProfessionalDetailsAdapterTest {
         assertThat(details.professional().id()).isEqualTo(10L);
         assertThat(details.category().id()).isEqualTo(20L);
         assertThat(details.category().description()).isNull();
-        assertThat(details.weeklySchedules()).extracting(schedule -> schedule.id())
+        assertThat(details.weeklySchedules()).extracting(WeeklySchedule::id)
                 .containsExactly(30L, 31L);
-        assertThat(details.weeklySchedules()).extracting(schedule -> schedule.enabled())
+        assertThat(details.weeklySchedules()).extracting(WeeklySchedule::enabled)
                 .containsExactly(false, true);
         verify(schedules).findByProfessionalIdOrderByIdAsc(10L);
     }

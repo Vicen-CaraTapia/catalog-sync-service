@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -110,7 +111,7 @@ class JpaProfessionalSearchAdapterTest {
 
         assertThat(result).isSameAs(combined);
         ArgumentCaptor<String> patternCaptor = ArgumentCaptor.forClass(String.class);
-        verify(builder, org.mockito.Mockito.times(2))
+        verify(builder, times(2))
                 .like(eq(nameExpression), patternCaptor.capture(), eq('!'));
         assertThat(patternCaptor.getAllValues()).containsExactly("%a!%!_!!%", "%a!%!_!!%");
         verify(root).get("firstName");
@@ -118,7 +119,7 @@ class JpaProfessionalSearchAdapterTest {
         verify(root).get("categoryId");
         verify(root).get("enabled");
         ArgumentCaptor<Object> valueCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(builder, org.mockito.Mockito.times(2)).equal(eq(field), valueCaptor.capture());
+        verify(builder, times(2)).equal(eq(field), valueCaptor.capture());
         assertThat(valueCaptor.getAllValues()).containsExactly(7L, false);
         verify(builder).and(any(Predicate[].class));
     }
