@@ -41,7 +41,7 @@ public final class CatalogReconciliationRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             retryExecutor.execute(Operation.RECONCILIATION, reconcileCatalog::reconcile);
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException _) {
             LOG.error(FAILURE_MESSAGE);
             throw new IllegalStateException(FAILURE_MESSAGE);
         }

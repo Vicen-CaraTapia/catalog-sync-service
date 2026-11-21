@@ -171,10 +171,10 @@ class CatedraRestClientTest {
 				Thread.sleep(250);
 				respond(exchange, 200, MediaType.APPLICATION_JSON_VALUE, "{\"value\":\"late\"}");
 			}
-			catch (InterruptedException exception) {
+			catch (InterruptedException _) {
 				Thread.currentThread().interrupt();
 			}
-			catch (IOException ignored) {
+			catch (IOException _) {
 				// The client may have disconnected after its timeout.
 			}
 		}, Duration.ofMillis(25));

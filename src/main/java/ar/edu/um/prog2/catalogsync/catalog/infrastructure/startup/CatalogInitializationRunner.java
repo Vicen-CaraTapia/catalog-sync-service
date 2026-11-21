@@ -42,7 +42,7 @@ public final class CatalogInitializationRunner implements ApplicationRunner {
         try {
             retryExecutor.execute(Operation.INITIALIZATION, initializeCatalogUseCase::initializeIfNeeded);
         }
-        catch (RuntimeException exception) {
+        catch (RuntimeException _) {
             LOG.error(FAILURE_MESSAGE);
             throw new IllegalStateException(FAILURE_MESSAGE);
         }

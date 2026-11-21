@@ -220,7 +220,7 @@ class JpaProcessedCatalogEventAdapterIT {
             try {
                 port.registerProcessed(id, version);
                 return "success";
-            } catch (ConflictingCatalogEventException exception) {
+            } catch (ConflictingCatalogEventException _) {
                 return "conflict";
             }
         };
