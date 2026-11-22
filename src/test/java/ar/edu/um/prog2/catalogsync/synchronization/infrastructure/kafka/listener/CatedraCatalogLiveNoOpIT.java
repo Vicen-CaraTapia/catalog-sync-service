@@ -81,10 +81,10 @@ class CatedraCatalogLiveNoOpIT {
                  "newVersion":%d,"occurredAt":"2026-09-10T13:44:59Z",
                  "source":"LIVE_CHECK","schemaVersion":1}
                 """.formatted(remoteVersion);
-        ConsumerRecord<String, String> record = new ConsumerRecord<>(
+        ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>(
                 "catalog-live-check", 0, 0L, Long.toString(remoteVersion), eventJson);
 
-        listener.onMessage(record, acknowledgment);
+        listener.onMessage(consumerRecord, acknowledgment);
 
         assertThat(appliedVersionPort.readAppliedVersion()).isEqualTo(localVersion);
         assertThat(counts(jdbc)).containsExactly(counts);

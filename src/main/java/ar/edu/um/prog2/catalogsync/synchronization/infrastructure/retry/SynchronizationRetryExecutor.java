@@ -59,21 +59,10 @@ public final class SynchronizationRetryExecutor {
                 }
                 return;
             } catch (RuntimeException failure) {
-                if (Thread.currentThread().isInterrupted() || classifier.isInterruptedFailure(failure)) {
-                    Thread.currentThread().interrupt();
-                    LOG.warn("Synchronization interrupted: operation={}", operation);
-                    throw failure;
-                }
-                if (!classifier.isRetryable(failure)) {
-                    LOG.error("Synchronization failed without retry: operation={}, attempt={}", operation, attempt);
-                    throw failure;
-                }
+                requireRetryableFailure(operation, attempt, failure);
                 lastFailure = failure;
                 if (attempt < properties.maxAttempts()) {
-                    Duration delay = attempt == 1 ? properties.firstBackoff() : properties.secondBackoff();
-                    LOG.warn("Synchronization retry scheduled: operation={}, attempt={}, delayMillis={}",
-                            operation, attempt, delay.toMillis());
-                    await(operation, delay);
+                    awaitNextAttempt(operation, attempt);
                 }
             }
         }
@@ -82,7 +71,22 @@ public final class SynchronizationRetryExecutor {
         throw Objects.requireNonNull(lastFailure);
     }
 
-    private void await(Operation operation, Duration delay) {
+    private void requireRetryableFailure(Operation operation, int attempt, RuntimeException failure) {
+        if (Thread.currentThread().isInterrupted() || classifier.isInterruptedFailure(failure)) {
+            Thread.currentThread().interrupt();
+            LOG.warn("Synchronization interrupted: operation={}", operation);
+            throw failure;
+        }
+        if (!classifier.isRetryable(failure)) {
+            LOG.error("Synchronization failed without retry: operation={}, attempt={}", operation, attempt);
+            throw failure;
+        }
+    }
+
+    private void awaitNextAttempt(Operation operation, int attempt) {
+        Duration delay = attempt == 1 ? properties.firstBackoff() : properties.secondBackoff();
+        LOG.warn("Synchronization retry scheduled: operation={}, attempt={}, delayMillis={}",
+                operation, attempt, delay.toMillis());
         try {
             waiter.await(delay);
         } catch (InterruptedException interruption) {

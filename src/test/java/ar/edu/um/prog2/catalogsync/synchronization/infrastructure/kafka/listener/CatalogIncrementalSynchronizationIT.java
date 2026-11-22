@@ -123,7 +123,7 @@ class CatalogIncrementalSynchronizationIT {
             return null;
         }).when(acknowledgment).acknowledge();
 
-        listener.onMessage(record(7), acknowledgment);
+        listener.onMessage(kafkaRecord(7), acknowledgment);
 
         assertThat(appliedVersion()).isEqualTo(7L);
         assertThat(jdbc.queryForObject("SELECT name FROM professional_categories WHERE id = ?",
@@ -153,7 +153,8 @@ class CatalogIncrementalSynchronizationIT {
         when(changesPort.readChanges(6)).thenReturn(Optional.of(changes(6,
                 List.of(), List.of(professional(INVALID_CATEGORY_ID, "Rejected", false)), List.of())));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = kafkaRecord(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(RuntimeException.class);
 
         assertThat(appliedVersion()).isEqualTo(5L);
@@ -185,7 +186,7 @@ class CatalogIncrementalSynchronizationIT {
             return null;
         }).when(acknowledgment).acknowledge();
 
-        listener.onMessage(record(7), acknowledgment);
+        listener.onMessage(kafkaRecord(7), acknowledgment);
 
         assertThat(appliedVersion()).isEqualTo(7L);
         assertThat(jdbc.queryForObject("SELECT name FROM professional_categories WHERE id = ?",
@@ -208,7 +209,8 @@ class CatalogIncrementalSynchronizationIT {
                 List.of(category("Committed", false)), List.of(), List.of())));
         when(recoverSnapshot.recover(8)).thenThrow(new IllegalStateException("Controlled recovery failure"));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = kafkaRecord(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Controlled recovery failure");
 
@@ -259,7 +261,7 @@ class CatalogIncrementalSynchronizationIT {
                 LocalTime.of(9, 0), LocalTime.of(12, 0), 30, enabled, CREATED, UPDATED);
     }
 
-    private static ConsumerRecord<String, String> record(long version) {
+    private static ConsumerRecord<String, String> kafkaRecord(long version) {
         return new ConsumerRecord<>("test-catalog-topic", 0, 0L, Long.toString(version), """
                 {"eventId":"catalog-event-7-4f3b","eventType":"CatalogUpdated","newVersion":7,
                  "occurredAt":"2026-09-10T13:44:59Z","source":"MANUAL","schemaVersion":1}

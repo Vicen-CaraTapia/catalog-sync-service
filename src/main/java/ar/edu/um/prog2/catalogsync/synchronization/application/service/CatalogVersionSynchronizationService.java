@@ -47,17 +47,22 @@ public final class CatalogVersionSynchronizationService {
             return;
         }
 
+        synchronizePendingVersions(localVersion, targetVersion, metadata.currentVersion());
+    }
+
+    private void synchronizePendingVersions(long localVersion, long targetVersion, long publishedVersion) {
         long version = Math.addExact(localVersion, 1L);
         while (true) {
             var changes = changesPort.readChanges(version);
             if (changes.isEmpty()) {
-                recoverSnapshot.recover(metadata.currentVersion());
+                recoverSnapshot.recover(publishedVersion);
                 return;
             }
-            if (changes.get().requestedChangeVersion() != version) {
+            var incrementalChanges = changes.get();
+            if (incrementalChanges.requestedChangeVersion() != version) {
                 throw new IllegalStateException("Catalog changes version differs from the requested version");
             }
-            applyVersion.apply(changes.get());
+            applyVersion.apply(incrementalChanges);
             if (version == targetVersion) {
                 break;
             }

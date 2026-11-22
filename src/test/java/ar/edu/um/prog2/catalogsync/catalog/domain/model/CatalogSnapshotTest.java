@@ -7,8 +7,12 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class CatalogSnapshotTest {
 
@@ -30,49 +34,38 @@ class CatalogSnapshotTest {
                 .isEqualTo(false);
     }
 
-    @Test
-    void rejectsDuplicateCategoryIds() {
-        ProfessionalCategory category = category(1L);
-
-        assertThatThrownBy(() -> new CatalogSnapshot(
-                1L,
-                UPDATED_AT,
-                List.of(category, category),
-                List.of(),
-                List.of()
-        )).isInstanceOf(IllegalArgumentException.class);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("inconsistentSnapshots")
+    void rejectsInconsistentSnapshot(
+            String scenario,
+            List<ProfessionalCategory> categories,
+            List<Professional> professionals,
+            List<WeeklySchedule> schedules
+    ) {
+        assertThatThrownBy(() -> new CatalogSnapshot(1L, UPDATED_AT, categories, professionals, schedules))
+                .as(scenario)
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
-    void rejectsProfessionalReferencingAnAbsentCategory() {
-        assertThatThrownBy(() -> new CatalogSnapshot(
-                1L,
-                UPDATED_AT,
-                List.of(),
-                List.of(professional(99L)),
-                List.of()
-        )).isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    void rejectsWeeklyScheduleReferencingAnAbsentProfessional() {
-        assertThatThrownBy(() -> new CatalogSnapshot(
-                1L,
-                UPDATED_AT,
-                List.of(category(1L)),
-                List.of(),
-                List.of(schedule(99L))
-        )).isInstanceOf(IllegalArgumentException.class);
+    private static Stream<Arguments> inconsistentSnapshots() {
+        var category = category(1L);
+        return Stream.of(
+                Arguments.of("duplicate category IDs", List.of(category, category), List.of(), List.of()),
+                Arguments.of("absent category", List.of(), List.of(professional(99L)), List.of()),
+                Arguments.of("absent professional", List.of(category), List.of(), List.of(schedule(99L)))
+        );
     }
 
     @Test
     void rejectsNonPositiveSlotDuration() {
+        var startTime = LocalTime.of(9, 0);
+        var endTime = LocalTime.of(12, 0);
         assertThatThrownBy(() -> new WeeklySchedule(
                 1L,
                 1L,
                 DayOfWeek.MONDAY,
-                LocalTime.of(9, 0),
-                LocalTime.of(12, 0),
+                startTime,
+                endTime,
                 0,
                 true,
                 CREATED_AT,
@@ -83,8 +76,10 @@ class CatalogSnapshotTest {
     @Test
     void exposesImmutableCollections() {
         CatalogSnapshot snapshot = validSnapshot();
+        var professionals = snapshot.professionals();
+        var additionalProfessional = professional(1L);
 
-        assertThatThrownBy(() -> snapshot.professionals().add(professional(1L)))
+        assertThatThrownBy(() -> professionals.add(additionalProfessional))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -98,7 +93,7 @@ class CatalogSnapshotTest {
         );
     }
 
-    private ProfessionalCategory category(long id) {
+    private static ProfessionalCategory category(long id) {
         return new ProfessionalCategory(
                 id,
                 "Clinical medicine",
@@ -109,7 +104,7 @@ class CatalogSnapshotTest {
         );
     }
 
-    private Professional professional(long categoryId) {
+    private static Professional professional(long categoryId) {
         return new Professional(
                 15L,
                 categoryId,
@@ -121,7 +116,7 @@ class CatalogSnapshotTest {
         );
     }
 
-    private WeeklySchedule schedule(long professionalId) {
+    private static WeeklySchedule schedule(long professionalId) {
         return new WeeklySchedule(
                 21L,
                 professionalId,

@@ -86,7 +86,8 @@ class JpaCatalogSnapshotPersistenceAdapterTest {
         when(catalogSyncStateRepository.findByStateId(CatalogSyncStateEntity.SINGLETON_ID))
                 .thenReturn(Optional.of(state));
 
-        assertThatThrownBy(() -> adapter.apply(emptySnapshot(7)))
+        var snapshot = emptySnapshot(7);
+        assertThatThrownBy(() -> adapter.apply(snapshot))
                 .isInstanceOf(StaleCatalogSnapshotException.class)
                 .hasMessage("Catalog snapshot is older than the locally applied version");
 
@@ -118,7 +119,8 @@ class JpaCatalogSnapshotPersistenceAdapterTest {
         when(catalogSyncStateRepository.findByStateId(CatalogSyncStateEntity.SINGLETON_ID))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> adapter.apply(emptySnapshot(7)))
+        var snapshot = emptySnapshot(7);
+        assertThatThrownBy(() -> adapter.apply(snapshot))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("catalog sync state is missing");
 

@@ -36,7 +36,8 @@ class CatalogReconciliationRunnerTest {
             throw new IllegalStateException("secret-marker-must-not-be-logged");
         }, retryExecutor(new ArrayList<>()));
 
-        assertThatThrownBy(() -> runner.run(new DefaultApplicationArguments()))
+        var arguments = new DefaultApplicationArguments();
+        assertThatThrownBy(() -> runner.run(arguments))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Catalog state reconciliation failed; application startup aborted.")
                 .hasNoCause();

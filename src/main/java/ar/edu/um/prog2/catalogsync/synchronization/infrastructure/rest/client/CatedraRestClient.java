@@ -80,7 +80,7 @@ public final class CatedraRestClient {
 
 			return new CatedraProblemDetails(textValue(root.get("code")), textValue(root.get("detail")));
 		}
-		catch (IOException | RuntimeException exception) {
+		catch (IOException | RuntimeException _) {
 			return CatedraProblemDetails.empty();
 		}
 	}

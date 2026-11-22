@@ -6,6 +6,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 import ar.edu.um.prog2.catalogsync.config.CatalogSynchronizationRetryProperties;
 import ar.edu.um.prog2.catalogsync.synchronization.domain.ports.in.CatalogUpdateNotificationUseCase;
@@ -32,7 +33,7 @@ class CatalogUpdatedListenerTest {
 
 	@Test
 	void acknowledgesOnlyAfterTheUseCaseCompletes() {
-		listener.onMessage(record("7", validJson()), acknowledgment);
+		listener.onMessage(kafkaRecord("7", validJson()), acknowledgment);
 
 		var order = inOrder(useCase, acknowledgment);
 		order.verify(useCase).onCatalogUpdated("catalog-event-7-4f3b", 7L);
@@ -42,7 +43,8 @@ class CatalogUpdatedListenerTest {
 
 	@Test
 	void rejectsMissingMessageKeyWithoutDelegatingOrAcknowledging() {
-		assertThatThrownBy(() -> listener.onMessage(record(null, validJson()), acknowledgment))
+		var notification = kafkaRecord(null, validJson());
+		assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
 				.isInstanceOf(InvalidCatalogUpdatedEventException.class);
 
 		verifyNoInteractions(useCase, acknowledgment);
@@ -50,7 +52,8 @@ class CatalogUpdatedListenerTest {
 
 	@Test
 	void rejectsMismatchedMessageKeyWithoutDelegatingOrAcknowledging() {
-		assertThatThrownBy(() -> listener.onMessage(record("8", validJson()), acknowledgment))
+		var notification = kafkaRecord("8", validJson());
+		assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
 				.isInstanceOf(InvalidCatalogUpdatedEventException.class);
 
 		verifyNoInteractions(useCase, acknowledgment);
@@ -58,7 +61,8 @@ class CatalogUpdatedListenerTest {
 
 	@Test
 	void propagatesInvalidJsonWithoutDelegatingOrAcknowledging() {
-		assertThatThrownBy(() -> listener.onMessage(record("7", "{not-json"), acknowledgment))
+		var notification = kafkaRecord("7", "{not-json");
+		assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
 				.isInstanceOf(InvalidCatalogUpdatedEventException.class);
 
 		verifyNoInteractions(useCase, acknowledgment);
@@ -69,7 +73,7 @@ class CatalogUpdatedListenerTest {
 		var failure = new IllegalStateException("Test processing failure");
 		doThrow(failure).when(useCase).onCatalogUpdated("catalog-event-7-4f3b", 7L);
 
-		assertThatThrownBy(() -> listener.onMessage(record("7", validJson()), acknowledgment))
+		assertThatThrownBy(() -> listener.onMessage(kafkaRecord("7", validJson()), acknowledgment))
 				.isSameAs(failure);
 
 		verifyNoInteractions(acknowledgment);
@@ -80,9 +84,9 @@ class CatalogUpdatedListenerTest {
 		doThrow(new CatedraRedisUnavailableException(new SocketTimeoutException()))
 				.doNothing().when(useCase).onCatalogUpdated("catalog-event-7-4f3b", 7L);
 
-		listener.onMessage(record("7", validJson()), acknowledgment);
+		listener.onMessage(kafkaRecord("7", validJson()), acknowledgment);
 
-		verify(useCase, org.mockito.Mockito.times(2))
+		verify(useCase, times(2))
 				.onCatalogUpdated("catalog-event-7-4f3b", 7L);
 		verify(acknowledgment).acknowledge();
 		org.assertj.core.api.Assertions.assertThat(delays).containsExactly(Duration.ofSeconds(1));
@@ -91,13 +95,13 @@ class CatalogUpdatedListenerTest {
 	@Test
 	void doesNotAcknowledgeWhenAllNotificationAttemptsFail() {
 		var failure = new CatedraRedisUnavailableException(new SocketTimeoutException());
-		org.mockito.Mockito.doThrow(failure).when(useCase).onCatalogUpdated("catalog-event-7-4f3b", 7L);
+		doThrow(failure).when(useCase).onCatalogUpdated("catalog-event-7-4f3b", 7L);
 
 		org.assertj.core.api.Assertions.assertThatThrownBy(
-				() -> listener.onMessage(record("7", validJson()), acknowledgment))
+				() -> listener.onMessage(kafkaRecord("7", validJson()), acknowledgment))
 				.isSameAs(failure);
 
-		verify(useCase, org.mockito.Mockito.times(3)).onCatalogUpdated("catalog-event-7-4f3b", 7L);
+		verify(useCase, times(3)).onCatalogUpdated("catalog-event-7-4f3b", 7L);
 		verifyNoInteractions(acknowledgment);
 		org.assertj.core.api.Assertions.assertThat(delays)
 				.containsExactly(Duration.ofSeconds(1), Duration.ofSeconds(2));
@@ -109,7 +113,7 @@ class CatalogUpdatedListenerTest {
 				new TransientSynchronizationFailureClassifier(), delays::add);
 	}
 
-	private static ConsumerRecord<String, String> record(String key, String value) {
+	private static ConsumerRecord<String, String> kafkaRecord(String key, String value) {
 		return new ConsumerRecord<>("test-catalog-topic", 0, 0L, key, value);
 	}
 

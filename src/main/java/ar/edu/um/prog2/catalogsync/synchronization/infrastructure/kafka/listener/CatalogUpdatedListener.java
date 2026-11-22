@@ -39,11 +39,11 @@ public final class CatalogUpdatedListener {
 			autoStartup = "false"
 	)
 	public void onMessage(
-			ConsumerRecord<String, String> record,
+			ConsumerRecord<String, String> consumerRecord,
 			Acknowledgment acknowledgment
 	) {
-		var event = decoder.decode(record.value());
-		if (record.key() == null || !record.key().equals(Long.toString(event.newVersion()))) {
+		var event = decoder.decode(consumerRecord.value());
+		if (consumerRecord.key() == null || !consumerRecord.key().equals(Long.toString(event.newVersion()))) {
 			throw new InvalidCatalogUpdatedEventException();
 		}
 

@@ -23,7 +23,8 @@ class CatalogInitializationStartupTest {
 
     @Test
     void failedInitializationAbortsApplicationStartupWithoutLoggingCause(CapturedOutput output) {
-        assertThatThrownBy(() -> application().run())
+        SpringApplication application = application();
+        assertThatThrownBy(application::run)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Initial catalog synchronization failed; application startup aborted.");
 

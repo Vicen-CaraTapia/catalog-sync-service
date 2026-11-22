@@ -2,6 +2,7 @@ package ar.edu.um.prog2.catalogsync.synchronization.infrastructure.redis.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -68,7 +69,7 @@ class CatedraRedisIncrementalReadTest {
 
         assertThat(client.readChangesJson(7)).isEmpty();
         assertThat(client.readChangesJson(7)).contains("{\"version\":7}");
-        verify(valueOperations, org.mockito.Mockito.times(2)).get("catedra:sync:changes:7");
+        verify(valueOperations, times(2)).get("catedra:sync:changes:7");
     }
 
     @Test
@@ -104,7 +105,8 @@ class CatedraRedisIncrementalReadTest {
         when(hashOperations.multiGet("catedra:sync:professionals", List.of("15", "16")))
                 .thenReturn(Arrays.asList("professional-json", null));
 
-        assertThatThrownBy(() -> client.readProfessionalJson(List.of(15L, 16L)))
+        var ids = List.of(15L, 16L);
+        assertThatThrownBy(() -> client.readProfessionalJson(ids))
                 .isInstanceOf(InvalidCatedraRedisDataException.class);
     }
 

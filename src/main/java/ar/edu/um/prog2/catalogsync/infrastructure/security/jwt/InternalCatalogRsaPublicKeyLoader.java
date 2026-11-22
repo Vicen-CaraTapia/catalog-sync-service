@@ -31,7 +31,7 @@ final class InternalCatalogRsaPublicKeyLoader {
                 throw new IllegalArgumentException();
             }
             return key;
-        } catch (Exception failure) {
+        } catch (Exception _) {
             // Do not expose paths, key content or arbitrary provider/I/O messages during startup.
             throw new IllegalStateException("Internal JWT verification requires a valid external RSA public key (PEM SPKI, at least 2048 bits)");
         }

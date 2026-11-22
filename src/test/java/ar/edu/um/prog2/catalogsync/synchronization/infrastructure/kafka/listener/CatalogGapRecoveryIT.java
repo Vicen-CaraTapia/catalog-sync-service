@@ -132,7 +132,7 @@ class CatalogGapRecoveryIT {
         when(changesPort.readChanges(4)).thenReturn(Optional.of(emptyChanges(4)));
         assertCommittedBeforeAcknowledgment(4, 4);
 
-        listener.onMessage(record(4), acknowledgment);
+        listener.onMessage(kafkaRecord(4), acknowledgment);
 
         assertThat(REQUESTS).hasValue(0);
         verify(acknowledgment).acknowledge();
@@ -143,7 +143,7 @@ class CatalogGapRecoveryIT {
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
         assertCommittedBeforeAcknowledgment(8, 7);
 
-        listener.onMessage(record(7), acknowledgment);
+        listener.onMessage(kafkaRecord(7), acknowledgment);
 
         assertSnapshotApplied(8);
         assertThat(REQUESTS).hasValue(1);
@@ -156,7 +156,7 @@ class CatalogGapRecoveryIT {
         when(changesPort.readMetadata()).thenReturn(metadata(5, 1));
         when(changesPort.readChanges(4)).thenReturn(Optional.empty());
 
-        listener.onMessage(record(5), acknowledgment);
+        listener.onMessage(kafkaRecord(5), acknowledgment);
 
         assertSnapshotApplied(8);
         verify(changesPort, never()).readChanges(5);
@@ -168,7 +168,7 @@ class CatalogGapRecoveryIT {
     void redisAheadOfEventSelectsSnapshotEvenWhenHistoryIsRetained() {
         when(changesPort.readMetadata()).thenReturn(metadata(8, 1));
 
-        listener.onMessage(record(7), acknowledgment);
+        listener.onMessage(kafkaRecord(7), acknowledgment);
 
         assertSnapshotApplied(8);
         verify(changesPort, never()).readChanges(4);
@@ -181,7 +181,8 @@ class CatalogGapRecoveryIT {
         RESPONSE.set(new Response(200, snapshotJson(6)));
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = kafkaRecord(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(InsufficientCatalogSnapshotVersionException.class);
 
         assertFailedWithoutChanges(before);
@@ -193,7 +194,8 @@ class CatalogGapRecoveryIT {
         RESPONSE.set(new Response(503, "{\"code\":\"CATALOG_UNAVAILABLE\"}"));
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = kafkaRecord(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(CatedraHttpException.class);
 
         assertFailedWithoutChanges(before);
@@ -206,7 +208,8 @@ class CatalogGapRecoveryIT {
                 + " CHECK (applied_version IS DISTINCT FROM 8)");
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = kafkaRecord(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         assertFailedWithoutChanges(before);
@@ -219,7 +222,8 @@ class CatalogGapRecoveryIT {
                 List.of(new ProfessionalCategory(999L, "Concurrent", null, true,
                         Instant.EPOCH, Instant.EPOCH)), List.of(), List.of())));
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = kafkaRecord(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(StaleCatalogSnapshotException.class);
 
         assertThat(appliedVersion()).isEqualTo(9L);
@@ -231,11 +235,11 @@ class CatalogGapRecoveryIT {
     @Test
     void duplicateAfterRecoverySkipsRedisAndSnapshotAndCanAcknowledgeAgain() {
         when(changesPort.readMetadata()).thenReturn(metadata(7, 4));
-        listener.onMessage(record(7), acknowledgment);
+        listener.onMessage(kafkaRecord(7), acknowledgment);
         var before = state();
         clearInvocations(changesPort);
 
-        listener.onMessage(record(7), acknowledgment);
+        listener.onMessage(kafkaRecord(7), acknowledgment);
 
         assertThat(state()).isEqualTo(before);
         assertThat(REQUESTS).hasValue(1);
@@ -248,7 +252,8 @@ class CatalogGapRecoveryIT {
         processedEvents.registerProcessed(eventId, 8);
         var before = state();
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment))
+        var notification = kafkaRecord(7);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(ConflictingCatalogEventException.class);
 
         assertThat(state()).isEqualTo(before);
@@ -264,14 +269,14 @@ class CatalogGapRecoveryIT {
         var failure = new IllegalStateException("Controlled registration failure");
         doThrow(failure).when(processedEvents).registerProcessed(eventId, 7);
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment)).isSameAs(failure);
+        assertThatThrownBy(() -> listener.onMessage(kafkaRecord(7), acknowledgment)).isSameAs(failure);
 
         assertSnapshotApplied(8);
         assertThat(processedVersion()).isNull();
         verify(acknowledgment, never()).acknowledge();
 
         doCallRealMethod().when(processedEvents).registerProcessed(eventId, 7);
-        listener.onMessage(record(7), acknowledgment);
+        listener.onMessage(kafkaRecord(7), acknowledgment);
 
         assertThat(processedVersion()).isEqualTo(7L);
         assertThat(REQUESTS).hasValue(1);
@@ -284,7 +289,7 @@ class CatalogGapRecoveryIT {
         var failure = new CatedraRedisUnavailableException(null);
         when(changesPort.readMetadata()).thenThrow(failure);
 
-        assertThatThrownBy(() -> listener.onMessage(record(7), acknowledgment)).isSameAs(failure);
+        assertThatThrownBy(() -> listener.onMessage(kafkaRecord(7), acknowledgment)).isSameAs(failure);
 
         assertThat(REQUESTS).hasValue(0);
         assertFailedWithoutChanges(before);
@@ -299,7 +304,8 @@ class CatalogGapRecoveryIT {
         when(changesPort.readChanges(5)).thenReturn(Optional.empty());
         RESPONSE.set(new Response(503, "{}"));
 
-        assertThatThrownBy(() -> listener.onMessage(record(6), acknowledgment))
+        var notification = kafkaRecord(6);
+        assertThatThrownBy(() -> listener.onMessage(notification, acknowledgment))
                 .isInstanceOf(CatedraHttpException.class);
 
         assertThat(appliedVersion()).isEqualTo(4L);
@@ -358,7 +364,7 @@ class CatalogGapRecoveryIT {
         jdbc.update("UPDATE catalog_sync_state SET applied_version = NULL WHERE state_id = 1");
     }
 
-    private ConsumerRecord<String, String> record(long version) {
+    private ConsumerRecord<String, String> kafkaRecord(long version) {
         return new ConsumerRecord<>("test-catalog-topic", 0, 0L, Long.toString(version), """
                 {"eventId":"%s","eventType":"CatalogUpdated","newVersion":%d,
                  "occurredAt":"2026-09-10T13:44:59Z","source":"TEST","schemaVersion":1}

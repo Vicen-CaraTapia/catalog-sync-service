@@ -21,6 +21,10 @@ import tools.jackson.databind.ObjectMapper;
 
 public final class CatedraRedisCatalogDecoder {
 
+    private static final String ENABLED_FIELD = "enabled";
+    private static final String CREATED_AT_FIELD = "createdAt";
+    private static final String UPDATED_AT_FIELD = "updatedAt";
+
     private final ObjectMapper objectMapper;
 
     public CatedraRedisCatalogDecoder(ObjectMapper objectMapper) {
@@ -60,9 +64,9 @@ public final class CatedraRedisCatalogDecoder {
                 matchingId(root, requestedId),
                 requiredText(root, "name"),
                 optionalText(root, "description"),
-                requiredBoolean(root, "enabled"),
-                requiredInstant(root, "createdAt"),
-                requiredInstant(root, "updatedAt")
+                requiredBoolean(root, ENABLED_FIELD),
+                requiredInstant(root, CREATED_AT_FIELD),
+                requiredInstant(root, UPDATED_AT_FIELD)
         );
     }
 
@@ -73,9 +77,9 @@ public final class CatedraRedisCatalogDecoder {
                 requiredLong(root, "categoryId"),
                 requiredText(root, "firstName"),
                 requiredText(root, "lastName"),
-                requiredBoolean(root, "enabled"),
-                requiredInstant(root, "createdAt"),
-                requiredInstant(root, "updatedAt")
+                requiredBoolean(root, ENABLED_FIELD),
+                requiredInstant(root, CREATED_AT_FIELD),
+                requiredInstant(root, UPDATED_AT_FIELD)
         );
     }
 
@@ -93,9 +97,9 @@ public final class CatedraRedisCatalogDecoder {
                 requiredLocalTime(root, "startTime"),
                 requiredLocalTime(root, "endTime"),
                 slotDurationMinutes,
-                requiredBoolean(root, "enabled"),
-                requiredInstant(root, "createdAt"),
-                requiredInstant(root, "updatedAt")
+                requiredBoolean(root, ENABLED_FIELD),
+                requiredInstant(root, CREATED_AT_FIELD),
+                requiredInstant(root, UPDATED_AT_FIELD)
         );
     }
 
@@ -109,7 +113,7 @@ public final class CatedraRedisCatalogDecoder {
                 throw invalid();
             }
             return root;
-        } catch (JacksonException exception) {
+        } catch (JacksonException _) {
             throw invalid();
         }
     }
@@ -198,7 +202,7 @@ public final class CatedraRedisCatalogDecoder {
         }
         try {
             return Instant.parse(value);
-        } catch (DateTimeParseException exception) {
+        } catch (DateTimeParseException _) {
             throw invalid();
         }
     }
@@ -206,7 +210,7 @@ public final class CatedraRedisCatalogDecoder {
     private static DayOfWeek requiredDayOfWeek(JsonNode root, String field) {
         try {
             return DayOfWeek.valueOf(requiredText(root, field));
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException _) {
             throw invalid();
         }
     }
@@ -214,7 +218,7 @@ public final class CatedraRedisCatalogDecoder {
     private static LocalTime requiredLocalTime(JsonNode root, String field) {
         try {
             return LocalTime.parse(requiredText(root, field));
-        } catch (DateTimeParseException exception) {
+        } catch (DateTimeParseException _) {
             throw invalid();
         }
     }
@@ -225,7 +229,7 @@ public final class CatedraRedisCatalogDecoder {
         }
         try {
             return Long.parseLong(value);
-        } catch (NumberFormatException exception) {
+        } catch (NumberFormatException _) {
             throw invalid();
         }
     }

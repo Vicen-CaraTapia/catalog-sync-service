@@ -39,7 +39,8 @@ class CatalogInitializationRunnerTest {
             throw failure;
         }, retryExecutor(new ArrayList<>()));
 
-        assertThatThrownBy(() -> runner.run(new DefaultApplicationArguments()))
+        var arguments = new DefaultApplicationArguments();
+        assertThatThrownBy(() -> runner.run(arguments))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Initial catalog synchronization failed; application startup aborted.")
                 .hasNoCause();

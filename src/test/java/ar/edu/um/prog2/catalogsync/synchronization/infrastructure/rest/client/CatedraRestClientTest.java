@@ -9,9 +9,12 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ar.edu.um.prog2.catalogsync.config.CatedraIntegrationProperties;
+import ar.edu.um.prog2.catalogsynctest.config.CatedraTestProperties;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.config.CatedraRestClientConfiguration;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraHttpException;
 import ar.edu.um.prog2.catalogsync.synchronization.infrastructure.rest.exception.CatedraTimeoutException;
@@ -165,21 +168,33 @@ class CatedraRestClientTest {
 
 	@Test
 	void getTranslatesReadTimeout() throws IOException {
+		var requestReceived = new CountDownLatch(1);
+		var releaseResponse = new CountDownLatch(1);
 		CatedraRestClient client = startClient(exchange -> {
+			requestReceived.countDown();
 			try {
-				Thread.sleep(250);
-				respond(exchange, 200, MediaType.APPLICATION_JSON_VALUE, "{\"value\":\"late\"}");
+				// Bound server cleanup even if the test fails before releasing the response.
+				if (releaseResponse.await(5, TimeUnit.SECONDS)) {
+					respond(exchange, 200, MediaType.APPLICATION_JSON_VALUE, "{\"value\":\"late\"}");
+				}
 			}
-			catch (InterruptedException exception) {
+			catch (InterruptedException _) {
 				Thread.currentThread().interrupt();
 			}
-			catch (IOException ignored) {
+			catch (IOException _) {
 				// The client may have disconnected after its timeout.
+			} finally {
+				exchange.close();
 			}
-		}, Duration.ofMillis(25));
+		}, Duration.ofSeconds(1));
 
-		assertThatThrownBy(() -> client.get("/timeout", TestResponse.class))
-				.isInstanceOf(CatedraTimeoutException.class);
+		try {
+			assertThatThrownBy(() -> client.get("/timeout", TestResponse.class))
+					.isInstanceOf(CatedraTimeoutException.class);
+			assertThat(requestReceived.getCount()).as("server received the request before timeout").isZero();
+		} finally {
+			releaseResponse.countDown();
+		}
 	}
 
 	@Test
@@ -206,29 +221,8 @@ class CatedraRestClientTest {
 	}
 
 	private CatedraRestClient clientFor(String baseUrl, Duration readTimeout) {
-		CatedraIntegrationProperties properties = new CatedraIntegrationProperties(
-				"test-catalog-sync",
-				"test-technical-jwt",
-				new CatedraIntegrationProperties.RestProperties(
-						baseUrl,
-						Duration.ofSeconds(1),
-						readTimeout
-				),
-				new CatedraIntegrationProperties.RedisProperties(
-						"localhost",
-						6379,
-						"test-user",
-						"test-password",
-						"catedra:sync:*",
-						"alumnos:test-catalog-sync:*",
-						Duration.ofSeconds(2),
-						Duration.ofSeconds(5)
-				),
-				new CatedraIntegrationProperties.KafkaProperties(
-						"localhost:19092",
-						"test-catalog-sync-consumer",
-						"catedra.catalog.test-catalog-sync"
-				)
+		CatedraIntegrationProperties properties = CatedraTestProperties.forRest(
+				new CatedraIntegrationProperties.RestProperties(baseUrl, Duration.ofSeconds(1), readTimeout)
 		);
 
 		return new CatedraRestClientConfiguration().catedraRestClient(properties, new ObjectMapper());

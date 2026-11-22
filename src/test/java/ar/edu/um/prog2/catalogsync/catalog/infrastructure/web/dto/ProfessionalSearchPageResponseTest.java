@@ -27,8 +27,9 @@ class ProfessionalSearchPageResponseTest {
         assertThat(response.size()).isEqualTo(10);
         assertThat(response.totalElements()).isEqualTo(11);
         assertThat(response.totalPages()).isEqualTo(2);
+        var responseContent = response.content();
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> response.content().clear());
+                .isThrownBy(responseContent::clear);
     }
 
     @Test

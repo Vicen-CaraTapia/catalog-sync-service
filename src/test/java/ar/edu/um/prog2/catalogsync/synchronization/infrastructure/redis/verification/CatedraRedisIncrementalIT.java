@@ -174,10 +174,10 @@ class CatedraRedisIncrementalIT {
                 try (var socket = new Socket()) {
                     socket.connect(new InetSocketAddress("127.0.0.1", port), 100);
                     return;
-                } catch (IOException exception) {
+                } catch (IOException _) {
                     try {
                         Thread.sleep(50);
-                    } catch (InterruptedException interrupted) {
+                    } catch (InterruptedException _) {
                         Thread.currentThread().interrupt();
                         break;
                     }
@@ -194,7 +194,7 @@ class CatedraRedisIncrementalIT {
                 if (!process.waitFor(5, TimeUnit.SECONDS)) {
                     process.destroyForcibly();
                 }
-            } catch (InterruptedException exception) {
+            } catch (InterruptedException _) {
                 process.destroyForcibly();
                 Thread.currentThread().interrupt();
             }

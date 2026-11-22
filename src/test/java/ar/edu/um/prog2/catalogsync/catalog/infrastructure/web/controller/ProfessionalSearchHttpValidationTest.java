@@ -94,7 +94,7 @@ class ProfessionalSearchHttpValidationTest {
         // C4 remains denied in production. Only this test context authorizes its search GET.
         @Bean
         @Order(0)
-        SecurityFilterChain searchForTestOnly(HttpSecurity http, JwtDecoder decoder) throws Exception {
+        SecurityFilterChain searchForTestOnly(HttpSecurity http, JwtDecoder decoder) {
             return http.securityMatcher("/api/professionals")
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(authorize -> authorize.anyRequest().hasAuthority("SCOPE_catalog:read"))

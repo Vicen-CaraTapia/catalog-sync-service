@@ -42,7 +42,7 @@ public final class CatalogUpdatedEventDecoder {
 			return new CatalogUpdatedEvent(
 					eventId, eventType, newVersion, occurredAt, source, schemaVersion
 			);
-		} catch (JacksonException exception) {
+		} catch (JacksonException _) {
 			throw invalid();
 		}
 	}
@@ -74,7 +74,7 @@ public final class CatalogUpdatedEventDecoder {
 	private static Instant requiredInstant(JsonNode root, String field) {
 		try {
 			return Instant.parse(requiredText(root, field));
-		} catch (DateTimeParseException exception) {
+		} catch (DateTimeParseException _) {
 			throw invalid();
 		}
 	}

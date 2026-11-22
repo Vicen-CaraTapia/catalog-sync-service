@@ -1,10 +1,18 @@
 package ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.adapter;
 
+import static java.util.stream.Collectors.toSet;
+
 import ar.edu.um.prog2.catalogsync.catalog.application.exception.StaleCatalogSnapshotException;
 import ar.edu.um.prog2.catalogsync.catalog.domain.model.CatalogSnapshot;
+import ar.edu.um.prog2.catalogsync.catalog.domain.model.Professional;
+import ar.edu.um.prog2.catalogsync.catalog.domain.model.ProfessionalCategory;
+import ar.edu.um.prog2.catalogsync.catalog.domain.model.WeeklySchedule;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.CatalogInitializationStatePort;
 import ar.edu.um.prog2.catalogsync.catalog.domain.ports.out.CatalogSnapshotPersistencePort;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.CatalogSyncStateEntity;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalCategoryEntity;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.ProfessionalEntity;
+import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.entity.WeeklyScheduleEntity;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.mapper.CatalogPersistenceMapper;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.CatalogSyncStateRepository;
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.ProfessionalCategoryJpaRepository;
@@ -12,7 +20,7 @@ import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository
 import ar.edu.um.prog2.catalogsync.catalog.infrastructure.persistence.repository.WeeklyScheduleJpaRepository;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.ToLongFunction;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -52,6 +60,14 @@ public final class JpaCatalogSnapshotPersistenceAdapter
             throw new StaleCatalogSnapshotException();
         }
 
+        saveSnapshotEntities(snapshot);
+        deleteAbsentEntities(snapshot);
+
+        lockedState.updateAppliedVersion(snapshot.version());
+        catalogSyncStateRepository.flush();
+    }
+
+    private void saveSnapshotEntities(CatalogSnapshot snapshot) {
         professionalCategoryRepository.saveAll(
                 snapshot.professionalCategories().stream()
                         .map(CatalogPersistenceMapper::toEntity)
@@ -72,30 +88,29 @@ public final class JpaCatalogSnapshotPersistenceAdapter
                         .toList()
         );
         weeklyScheduleRepository.flush();
+    }
 
+    private void deleteAbsentEntities(CatalogSnapshot snapshot) {
         weeklyScheduleRepository.deleteAll(absentEntities(
                 weeklyScheduleRepository.findAll(),
-                snapshot.weeklySchedules().stream().map(weeklySchedule -> weeklySchedule.id()).collect(java.util.stream.Collectors.toSet()),
-                weeklySchedule -> weeklySchedule.getId()
+                snapshot.weeklySchedules().stream().map(WeeklySchedule::id).collect(toSet()),
+                WeeklyScheduleEntity::getId
         ));
         weeklyScheduleRepository.flush();
 
         professionalRepository.deleteAll(absentEntities(
                 professionalRepository.findAll(),
-                snapshot.professionals().stream().map(professional -> professional.id()).collect(java.util.stream.Collectors.toSet()),
-                professional -> professional.getId()
+                snapshot.professionals().stream().map(Professional::id).collect(toSet()),
+                ProfessionalEntity::getId
         ));
         professionalRepository.flush();
 
         professionalCategoryRepository.deleteAll(absentEntities(
                 professionalCategoryRepository.findAll(),
-                snapshot.professionalCategories().stream().map(category -> category.id()).collect(java.util.stream.Collectors.toSet()),
-                category -> category.getId()
+                snapshot.professionalCategories().stream().map(ProfessionalCategory::id).collect(toSet()),
+                ProfessionalCategoryEntity::getId
         ));
         professionalCategoryRepository.flush();
-
-        lockedState.updateAppliedVersion(snapshot.version());
-        catalogSyncStateRepository.flush();
     }
 
     private CatalogSyncStateEntity syncState() {
@@ -107,10 +122,10 @@ public final class JpaCatalogSnapshotPersistenceAdapter
     private static <T> List<T> absentEntities(
             List<T> existingEntities,
             Set<Long> incomingIds,
-            Function<T, Long> idExtractor
+            ToLongFunction<T> idExtractor
     ) {
         return existingEntities.stream()
-                .filter(entity -> !incomingIds.contains(idExtractor.apply(entity)))
+                .filter(entity -> !incomingIds.contains(idExtractor.applyAsLong(entity)))
                 .toList();
     }
 }
